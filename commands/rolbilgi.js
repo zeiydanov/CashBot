@@ -1,3 +1,4 @@
+```js
 const {
     SlashCommandBuilder,
     EmbedBuilder
@@ -15,72 +16,149 @@ module.exports = {
         ),
 
     async execute(interaction) {
+
         const role = interaction.options.getRole('rol');
 
-        // Discord'un "düşünüyor..." süresini hemen başlat
+        // Cevabı hemen başlat
         await interaction.deferReply();
 
         try {
-            // Üyeleri Discord'dan al
-            const members = await interaction.guild.members.fetch({
-                withPresences: false
-            });
 
-            // Role sahip üyeleri bul
-            const roleMembers = members.filter(member =>
-                member.roles.cache.has(role.id)
-            );
+            // Cache'deki üyelerden role sahip olanları bul
+            const roleMembers = role.members;
 
             const memberCount = roleMembers.size;
 
-            // Üyeleri sırala
+            // Üyeleri isme göre sırala
             const sortedMembers = [...roleMembers.values()]
-                .sort((a, b) => a.displayName.localeCompare(b.displayName));
+                .sort((a, b) =>
+                    a.displayName.localeCompare(
+                        b.displayName,
+                        'tr'
+                    )
+                );
 
-            // Listeyi oluştur
-            let memberList = sortedMembers
-                .map((member, index) => `${index + 1}. ${member}`)
-                .join('\n');
+            let memberList;
 
             if (memberCount === 0) {
-                memberList = '❌ Bu role sahip kimse bulunamadı.';
-            }
 
-            // Discord embed açıklama limiti
-            if (memberList.length > 3800) {
                 memberList =
-                    memberList.substring(0, 3600) +
-                    `\n\n... **${memberCount} kişi** bulundu. Liste çok uzun olduğu için tamamı gösterilemedi.`;
+                    '❌ Bu role sahip kimse bulunamadı.';
+
+            } else {
+
+                memberList = sortedMembers
+                    .map(
+                        (member, index) =>
+                            `${index + 1}. ${member}`
+                    )
+                    .join('\n');
+
             }
 
-            const embed = new EmbedBuilder()
-                .setColor(role.color || 0x5865F2)
-                .setTitle(`🎭 ${role.name}`)
-                .setDescription(
-                    `👥 **Toplam:** \`${memberCount} kişi\`\n\n` +
-                    `👤 **Role Sahip Üyeler:**\n${memberList}`
-                )
-                .addFields({
-                    name: '🆔 Rol ID',
-                    value: `\`${role.id}\``,
-                    inline: true
-                })
-                .setFooter({
-                    text: `CashBot • ${interaction.guild.name}`
-                })
-                .setTimestamp();
+            // Discord embed açıklaması maksimum 4096 karakter
+            if (memberList.length > 3600) {
+
+                const visibleMembers = [];
+
+                let currentLength = 0;
+
+                for (let i = 0; i < sortedMembers.length; i++) {
+
+                    const line =
+                        `${i + 1}. ${sortedMembers[i]}\n`;
+
+                    if (
+                        currentLength +
+                        line.length >
+                        3500
+                    ) {
+                        break;
+                    }
+
+                    visibleMembers.push(line);
+
+                    currentLength += line.length;
+                }
+
+                memberList =
+                    visibleMembers.join('') +
+                    `\n... ve **${memberCount - visibleMembers.length} kişi daha** var.`;
+            }
+
+            const embed =
+                new EmbedBuilder()
+
+                    .setColor(
+                        role.color || 0x5865F2
+                    )
+
+                    .setTitle(
+                        `🎭 ${role.name} Rol Bilgisi`
+                    )
+
+                    .setDescription(
+                        `👥 **Toplam Üye:** \`${memberCount}\` kişi\n\n` +
+
+                        `👤 **Role Sahip Üyeler:**\n` +
+
+                        memberList
+                    )
+
+                    .addFields({
+
+                        name: '🆔 Rol ID',
+
+                        value:
+                            `\`${role.id}\``,
+
+                        inline: true
+
+                    })
+
+                    .addFields({
+
+                        name: '🎨 Rol Rengi',
+
+                        value:
+                            role.hexColor,
+
+                        inline: true
+
+                    })
+
+                    .setFooter({
+
+                        text:
+                            `CashBot • ${interaction.guild.name}`
+
+                    })
+
+                    .setTimestamp();
 
             await interaction.editReply({
-                embeds: [embed]
+
+                embeds: [
+                    embed
+                ]
+
             });
 
         } catch (error) {
-            console.error('ROL BİLGİ HATASI:', error);
+
+            console.error(
+                '❌ Rol bilgi hatası:',
+                error
+            );
 
             await interaction.editReply({
+
                 content:
-                    '❌ Üyeler alınırken hata oluştu. Discord Developer Portal üzerinden **Server Members Intent** özelliğinin açık olduğundan emin ol.'
+                    '❌ Rol bilgileri alınırken bir hata oluştu.'
+
             });
+
         }
     }
 };
+```
