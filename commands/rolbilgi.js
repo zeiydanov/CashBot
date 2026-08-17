@@ -10,66 +10,81 @@ module.exports = {
         .addRoleOption(option =>
             option
                 .setName('rol')
-                .setDescription('Bilgisini görmek istediğin rolü seç.')
+                .setDescription('Üyelerini görmek istediğin rolü seç.')
                 .setRequired(true)
         ),
 
     async execute(interaction) {
+        await interaction.deferReply();
+
         const role = interaction.options.getRole('rol');
 
-        // Roldeki üyeleri al
-        const members = role.members;
+        try {
+            // Sunucudaki tüm üyeleri çek
+            const members = await interaction.guild.members.fetch();
 
-        // Üye sayısı
-        const memberCount = members.size;
+            // Seçilen role sahip üyeleri bul
+            const roleMembers = members.filter(member =>
+                member.roles.cache.has(role.id)
+            );
 
-        // Üyeleri listele
-        let memberList;
+            const memberCount = roleMembers.size;
 
-        if (memberCount === 0) {
-            memberList = 'Bu role sahip hiç kimse yok.';
-        } else {
-            memberList = members
-                .map(member => `• ${member}`)
-                .join('\n');
-        }
+            let memberList;
 
-        // Discord embed açıklama sınırını aşmasını önle
-        if (memberList.length > 4000) {
-            memberList =
-                members
+            if (memberCount === 0) {
+                memberList = '❌ Bu role sahip hiç kimse bulunamadı.';
+            } else {
+                memberList = roleMembers
                     .map(member => `• ${member}`)
-                    .join('\n')
-                    .substring(0, 3900) +
-                '\n\n... ve diğer üyeler.';
+                    .join('\n');
+            }
+
+            // Discord embed açıklama limiti
+            if (memberList.length > 3800) {
+                const visibleMembers = roleMembers
+                    .map(member => `• ${member}`)
+                    .join('\n');
+
+                memberList =
+                    visibleMembers.substring(0, 3700) +
+                    `\n\n... ve daha fazla üye var. **Toplam: ${memberCount} kişi**`;
+            }
+
+            const embed = new EmbedBuilder()
+                .setColor(role.color || 0x5865F2)
+                .setTitle(`🎭 ${role.name} Rol Bilgisi`)
+                .setDescription(
+                    `👥 **Role sahip kişi sayısı:** \`${memberCount}\`\n\n` +
+                    `👤 **Role Sahip Üyeler:**\n${memberList}`
+                )
+                .addFields(
+                    {
+                        name: '🆔 Rol ID',
+                        value: `\`${role.id}\``,
+                        inline: true
+                    },
+                    {
+                        name: '🎨 Rol Rengi',
+                        value: role.hexColor,
+                        inline: true
+                    }
+                )
+                .setFooter({
+                    text: `CashBot • ${interaction.guild.name}`
+                })
+                .setTimestamp();
+
+            await interaction.editReply({
+                embeds: [embed]
+            });
+
+        } catch (error) {
+            console.error('Rol bilgisi hatası:', error);
+
+            await interaction.editReply({
+                content: '❌ Üyeler alınırken bir hata oluştu. Botun **Server Members Intent** yetkisinin açık olduğundan emin ol.'
+            });
         }
-
-        const embed = new EmbedBuilder()
-            .setColor(role.color || 0x5865F2)
-            .setTitle(`🎭 ${role.name} Rol Bilgisi`)
-            .setDescription(
-                `👥 **Bu role sahip kişi sayısı:** \`${memberCount}\`\n\n` +
-                `**👤 Role Sahip Üyeler:**\n${memberList}`
-            )
-            .addFields(
-                {
-                    name: '🆔 Rol ID',
-                    value: `\`${role.id}\``,
-                    inline: true
-                },
-                {
-                    name: '🎨 Rol Rengi',
-                    value: role.hexColor,
-                    inline: true
-                }
-            )
-            .setFooter({
-                text: `CashBot • ${interaction.guild.name}`
-            })
-            .setTimestamp();
-
-        await interaction.reply({
-            embeds: [embed]
-        });
     }
 };
