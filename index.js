@@ -106,10 +106,15 @@ client.economy = economy;
 
 function getUserBalance(userId) {
 
-    return economy.getBalance(userId);
+    return economy.getBalance(
+        userId
+    );
 }
 
-function addUserMoney(userId, amount) {
+function addUserMoney(
+    userId,
+    amount
+) {
 
     return economy.addMoney(
         userId,
@@ -117,11 +122,71 @@ function addUserMoney(userId, amount) {
     );
 }
 
-function removeUserMoney(userId, amount) {
+function removeUserMoney(
+    userId,
+    amount
+) {
 
     return economy.removeMoney(
         userId,
         amount
+    );
+}
+
+// ==========================================
+// CASH MARKET ÜRÜNLERİ
+// ==========================================
+
+const MARKET_PRICES = {
+
+    vip: 50000,
+
+    weed: 100000,
+
+    surprise: 200000,
+
+    vehicle: 1000000,
+
+    fight: 500000,
+
+    special: 250000
+
+};
+
+// ==========================================
+// ÜRÜN İSİMLERİ
+// ==========================================
+
+const MARKET_NAMES = {
+
+    vip:
+        '💎 VIP Rol',
+
+    weed:
+        '🌿 Weed Permi',
+
+    surprise:
+        '🎁 Sürpriz Ödül',
+
+    vehicle:
+        '🚗 Araç Ödülü',
+
+    fight:
+        '🔫 FiveM Fight Paket',
+
+    special:
+        '⭐ Özel Rol'
+
+};
+
+// ==========================================
+// PARA FORMAT
+// ==========================================
+
+function formatMoney(amount) {
+
+    return Number(amount).toLocaleString(
+        'tr-TR'
     );
 }
 
@@ -161,6 +226,30 @@ client.once(
 
         console.log(
             '🛒 Cash Market: AKTİF'
+        );
+
+        console.log(
+            '💎 VIP: 50.000'
+        );
+
+        console.log(
+            '🌿 Weed Permi: 100.000'
+        );
+
+        console.log(
+            '🎁 Sürpriz Ödül: 200.000'
+        );
+
+        console.log(
+            '🚗 Araç Ödülü: 1.000.000'
+        );
+
+        console.log(
+            '🔫 FiveM Fight Paket: 500.000'
+        );
+
+        console.log(
+            '⭐ Özel Rol: 250.000'
         );
 
         console.log(
@@ -309,6 +398,175 @@ client.on(
 );
 
 // ==========================================
+// MARKET TALEP MESAJI
+// ==========================================
+
+async function createMarketClaim(
+    interaction,
+    product
+) {
+
+    const logChannelId =
+        process.env.LOG_CHANNEL_ID;
+
+    if (!logChannelId) {
+
+        console.log(
+            '⚠️ LOG_CHANNEL_ID bulunamadı. Talep mesajı gönderilemedi.'
+        );
+
+        return null;
+    }
+
+    const channel =
+        interaction.guild.channels.cache.get(
+            logChannelId
+        );
+
+    if (!channel) {
+
+        console.log(
+            '⚠️ LOG_CHANNEL_ID kanal olarak bulunamadı.'
+        );
+
+        return null;
+    }
+
+    const productName =
+        MARKET_NAMES[product];
+
+    const embed =
+        new EmbedBuilder()
+
+            .setColor(0xF1C40F)
+
+            .setTitle(
+                '🛒 CASH MARKET TALEBİ'
+            )
+
+            .setDescription(
+
+                '📢 **Yeni bir Cash Market talebi oluşturuldu.**\n\n' +
+
+                '👤 **Oyuncu:** ' +
+                interaction.user +
+                '\n' +
+
+                '🆔 **ID:** `' +
+                interaction.user.id +
+                '`\n\n' +
+
+                '🛍️ **Ürün:** ' +
+                productName +
+                '\n' +
+
+                '💰 **Ödenen:** `' +
+                formatMoney(
+                    MARKET_PRICES[product]
+                ) +
+                ' Cash`\n\n' +
+
+                '🎫 **Talep durumu:** Yetkili teslimatı bekleniyor.\n\n' +
+
+                '⚠️ Bu talep Cash Market satın alımı sonucunda otomatik oluşturulmuştur.'
+
+            )
+
+            .setFooter({
+
+                text:
+                    'CashBot • Market Talepleri'
+
+            })
+
+            .setTimestamp();
+
+    try {
+
+        const message =
+            await channel.send({
+
+                content:
+                    '📦 **MARKET TALEBİ** <@' +
+                    interaction.user.id +
+                    '>',
+
+                embeds: [
+                    embed
+                ]
+
+            });
+
+        return message;
+
+    } catch (error) {
+
+        console.error(
+            '❌ Market talep mesajı gönderilemedi:',
+            error
+        );
+
+        return null;
+    }
+}
+
+// ==========================================
+// MARKET SATIN ALMA BAŞARILI MESAJI
+// ==========================================
+
+function marketSuccessEmbed(
+    interaction,
+    product,
+    balance
+) {
+
+    return new EmbedBuilder()
+
+        .setColor(0x57F287)
+
+        .setTitle(
+            '🛒 MARKET SATIN ALIMI BAŞARILI!'
+        )
+
+        .setDescription(
+
+            '🎉 Tebrikler ' +
+            interaction.user +
+            '!\n\n' +
+
+            '🛍️ **Ürün:** ' +
+            MARKET_NAMES[product] +
+            '\n\n' +
+
+            '💰 **Ödenen:** `' +
+            formatMoney(
+                MARKET_PRICES[product]
+            ) +
+            ' Cash`\n\n' +
+
+            '💵 **Kalan bakiye:** `' +
+            formatMoney(
+                balance
+            ) +
+            ' Cash`\n\n' +
+
+            '📩 **Talebin yetkililere otomatik olarak iletildi.**\n\n' +
+
+            '⏳ Yetkililer en kısa sürede ödülünü teslim edecektir.'
+
+        )
+
+        .setFooter({
+
+            text:
+                'CashBot • Cash Market'
+
+        })
+
+        .setTimestamp();
+}
+
+// ==========================================
 // MARKET
 // ==========================================
 
@@ -319,15 +577,82 @@ async function handleMarketButton(
     const customId =
         interaction.customId;
 
+    const product =
+        customId.replace(
+            'market_',
+            ''
+        );
+
+    // ==========================================
+    // ÜRÜN KONTROL
+    // ==========================================
+
+    if (
+        !MARKET_PRICES[product]
+    ) {
+
+        return interaction.reply({
+
+            content:
+                '❌ Geçersiz market ürünü.',
+
+            ephemeral: true
+
+        });
+    }
+
+    const PRICE =
+        MARKET_PRICES[product];
+
+    // ==========================================
+    // BAKİYE
+    // ==========================================
+
+    const balance =
+        getUserBalance(
+            interaction.user.id
+        );
+
+    if (
+        balance < PRICE
+    ) {
+
+        return interaction.reply({
+
+            content:
+
+                '❌ **Yeterli Cash bulunmuyor.**\n\n' +
+
+                '💰 Bakiyen: `' +
+                formatMoney(balance) +
+                ' Cash`\n' +
+
+                '🛍️ Ürün: **' +
+                MARKET_NAMES[product] +
+                '**\n' +
+
+                '💵 Fiyat: `' +
+                formatMoney(PRICE) +
+                ' Cash`\n\n' +
+
+                '❗ Eksik Cash: `' +
+                formatMoney(
+                    PRICE - balance
+                ) +
+                ' Cash`',
+
+            ephemeral: true
+
+        });
+    }
+
     // ==========================================
     // VIP
     // ==========================================
 
     if (
-        customId === 'market_vip'
+        product === 'vip'
     ) {
-
-        const PRICE = 50000;
 
         const roleId =
             process.env.VIP_ROLE_ID;
@@ -337,9 +662,10 @@ async function handleMarketButton(
             return interaction.reply({
 
                 content:
-                    '❌ VIP_ROLE_ID .env dosyasında bulunamadı.',
+                    '❌ `VIP_ROLE_ID` .env dosyasında bulunamadı.',
 
                 ephemeral: true
+
             });
         }
 
@@ -356,12 +682,9 @@ async function handleMarketButton(
                     '❌ VIP rolü sunucuda bulunamadı.',
 
                 ephemeral: true
+
             });
         }
-
-        // ==========================================
-        // ZATEN VIP
-        // ==========================================
 
         if (
             interaction.member.roles.cache.has(
@@ -375,47 +698,9 @@ async function handleMarketButton(
                     '❌ Zaten **VIP** rolüne sahipsin.',
 
                 ephemeral: true
+
             });
         }
-
-        // ==========================================
-        // ECONOMY
-        // ==========================================
-
-        const balance =
-            getUserBalance(
-                interaction.user.id
-            );
-
-        // ==========================================
-        // PARA KONTROL
-        // ==========================================
-
-        if (
-            balance < PRICE
-        ) {
-
-            return interaction.reply({
-
-                content:
-
-                    '❌ **Yeterli Cash bulunmuyor.**\n\n' +
-
-                    '💰 Bakiyen: `' +
-                    balance.toLocaleString('tr-TR') +
-                    ' Cash`\n' +
-
-                    '💎 VIP fiyatı: `' +
-                    PRICE.toLocaleString('tr-TR') +
-                    ' Cash`',
-
-                ephemeral: true
-            });
-        }
-
-        // ==========================================
-        // ROLÜ VER
-        // ==========================================
 
         try {
 
@@ -433,18 +718,12 @@ async function handleMarketButton(
             return interaction.reply({
 
                 content:
-
-                    '❌ VIP rolü verilemedi.\n\n' +
-
-                    'Botun **Manage Roles** yetkisini ve VIP rolünün bot rolünün altında olduğunu kontrol et.',
+                    '❌ VIP rolü verilemedi. Botun rolünün VIP rolünden yukarıda olduğundan emin ol.',
 
                 ephemeral: true
+
             });
         }
-
-        // ==========================================
-        // CASH DÜŞ
-        // ==========================================
 
         const result =
             removeUserMoney(
@@ -464,93 +743,206 @@ async function handleMarketButton(
                     '❌ Cash işlemi kaydedilemedi. VIP rolün geri alındı.',
 
                 ephemeral: true
+
             });
         }
-
-        // ==========================================
-        // BAŞARILI
-        // ==========================================
-
-        const embed =
-            new EmbedBuilder()
-
-                .setColor(0xF1C40F)
-
-                .setTitle(
-                    '💎 VIP SATIN ALINDI!'
-                )
-
-                .setDescription(
-
-                    '🎉 Tebrikler ' +
-                    interaction.user +
-                    '!\n\n' +
-
-                    '💎 **VIP rolün başarıyla verildi.**\n\n' +
-
-                    '💰 Ödenen: `' +
-                    PRICE.toLocaleString('tr-TR') +
-                    ' Cash`\n\n' +
-
-                    '💵 Kalan bakiye: `' +
-                    result.balance.toLocaleString('tr-TR') +
-                    ' Cash`'
-
-                )
-
-                .setFooter({
-                    text:
-                        'CashBot • Cash Market'
-                })
-
-                .setTimestamp();
 
         return interaction.reply({
 
             embeds: [
-                embed
+
+                new EmbedBuilder()
+
+                    .setColor(0xF1C40F)
+
+                    .setTitle(
+                        '💎 VIP SATIN ALINDI!'
+                    )
+
+                    .setDescription(
+
+                        '🎉 Tebrikler ' +
+                        interaction.user +
+                        '!\n\n' +
+
+                        '💎 **VIP rolün başarıyla verildi.**\n\n' +
+
+                        '💰 Ödenen: `' +
+                        formatMoney(PRICE) +
+                        ' Cash`\n\n' +
+
+                        '💵 Kalan bakiye: `' +
+                        formatMoney(result.balance) +
+                        ' Cash`'
+
+                    )
+
+                    .setFooter({
+                        text:
+                            'CashBot • Cash Market'
+                    })
+
+                    .setTimestamp()
+
             ],
 
             ephemeral: true
+
         });
     }
 
     // ==========================================
-    // SÜRPRİZ
+    // WEED PERMİ
     // ==========================================
 
     if (
-        customId === 'market_surprise'
+        product === 'weed'
     ) {
 
-        const PRICE = 150000;
+        const roleId =
+            process.env.WEED_ROLE_ID;
 
-        const balance =
-            getUserBalance(
-                interaction.user.id
+        if (!roleId) {
+
+            return interaction.reply({
+
+                content:
+                    '❌ `WEED_ROLE_ID` .env dosyasında bulunamadı.',
+
+                ephemeral: true
+
+            });
+        }
+
+        const role =
+            interaction.guild.roles.cache.get(
+                roleId
             );
 
+        if (!role) {
+
+            return interaction.reply({
+
+                content:
+                    '❌ Weed Permi rolü sunucuda bulunamadı.',
+
+                ephemeral: true
+
+            });
+        }
+
         if (
-            balance < PRICE
+            interaction.member.roles.cache.has(
+                roleId
+            )
         ) {
 
             return interaction.reply({
 
                 content:
-
-                    '❌ **Yeterli Cash bulunmuyor.**\n\n' +
-
-                    '💰 Bakiyen: `' +
-                    balance.toLocaleString('tr-TR') +
-                    ' Cash`\n' +
-
-                    '🎁 Sürpriz ödül fiyatı: `' +
-                    PRICE.toLocaleString('tr-TR') +
-                    ' Cash`',
+                    '❌ Zaten **Weed Permi** rolüne sahipsin.',
 
                 ephemeral: true
+
             });
         }
+
+        try {
+
+            await interaction.member.roles.add(
+                role
+            );
+
+        } catch (error) {
+
+            console.error(
+                '❌ Weed rolü verme hatası:',
+                error
+            );
+
+            return interaction.reply({
+
+                content:
+                    '❌ Weed Permi verilemedi. Botun rolünün Weed Permi rolünden yukarıda olduğundan emin ol.',
+
+                ephemeral: true
+
+            });
+        }
+
+        const result =
+            removeUserMoney(
+                interaction.user.id,
+                PRICE
+            );
+
+        if (!result.success) {
+
+            await interaction.member.roles
+                .remove(role)
+                .catch(() => {});
+
+            return interaction.reply({
+
+                content:
+                    '❌ Cash işlemi kaydedilemedi. Weed Permi geri alındı.',
+
+                ephemeral: true
+
+            });
+        }
+
+        return interaction.reply({
+
+            embeds: [
+
+                new EmbedBuilder()
+
+                    .setColor(0x2ECC71)
+
+                    .setTitle(
+                        '🌿 WEED PERMİ SATIN ALINDI!'
+                    )
+
+                    .setDescription(
+
+                        '🎉 Tebrikler ' +
+                        interaction.user +
+                        '!\n\n' +
+
+                        '🌿 **Weed Permi rolün başarıyla verildi.**\n\n' +
+
+                        '💰 Ödenen: `' +
+                        formatMoney(PRICE) +
+                        ' Cash`\n\n' +
+
+                        '💵 Kalan bakiye: `' +
+                        formatMoney(result.balance) +
+                        ' Cash`'
+
+                    )
+
+                    .setFooter({
+                        text:
+                            'CashBot • Cash Market'
+                    })
+
+                    .setTimestamp()
+
+            ],
+
+            ephemeral: true
+
+        });
+    }
+
+    // ==========================================
+    // SÜRPRİZ ÖDÜL
+    // ==========================================
+
+    if (
+        product === 'surprise'
+    ) {
 
         const result =
             removeUserMoney(
@@ -566,93 +958,72 @@ async function handleMarketButton(
                     '❌ Satın alma kaydedilemedi.',
 
                 ephemeral: true
+
             });
         }
 
-        const embed =
-            new EmbedBuilder()
-
-                .setColor(0x9B59B6)
-
-                .setTitle(
-                    '🎁 SÜRPRİZ ÖDÜL SATIN ALINDI!'
-                )
-
-                .setDescription(
-
-                    '🎉 ' +
-                    interaction.user +
-                    ' sürpriz ödülü satın aldı!\n\n' +
-
-                    '💰 Ödenen: `' +
-                    PRICE.toLocaleString('tr-TR') +
-                    ' Cash`\n\n' +
-
-                    '🚗 **Boss veya OG\'nin garajındaki 1 araca talip olabilirsin!**\n\n' +
-
-                    '📸 **Bu mesajın ekran görüntüsünü al.**\n\n' +
-
-                    '🎫 Ödülünü almak için **#cash-ticket** üzerinden talebini belirt.\n\n' +
-
-                    '💵 Kalan bakiye: `' +
-                    result.balance.toLocaleString('tr-TR') +
-                    ' Cash`'
-
-                )
-
-                .setFooter({
-                    text:
-                        'CashBot • Sürpriz Ödül'
-                })
-
-                .setTimestamp();
+        await createMarketClaim(
+            interaction,
+            product
+        );
 
         return interaction.reply({
 
             embeds: [
-                embed
+
+                new EmbedBuilder()
+
+                    .setColor(0x9B59B6)
+
+                    .setTitle(
+                        '🎁 SÜRPRİZ ÖDÜL SATIN ALINDI!'
+                    )
+
+                    .setDescription(
+
+                        '🎉 ' +
+                        interaction.user +
+                        ' sürpriz ödülünü satın aldı!\n\n' +
+
+                        '🎁 **Ödül hakkın oluşturuldu.**\n\n' +
+
+                        '🚗 Boss veya OG garajındaki araçlardan 1 tanesine talip olabilirsin.\n\n' +
+
+                        '📸 Bu mesajın ekran görüntüsünü al.\n\n' +
+
+                        '🎫 Yetkililer talebini kontrol edip ödülünü teslim edecektir.\n\n' +
+
+                        '💰 Ödenen: `' +
+                        formatMoney(PRICE) +
+                        ' Cash`\n\n' +
+
+                        '💵 Kalan bakiye: `' +
+                        formatMoney(result.balance) +
+                        ' Cash`'
+
+                    )
+
+                    .setFooter({
+                        text:
+                            'CashBot • Sürpriz Ödül'
+                    })
+
+                    .setTimestamp()
+
             ],
 
             ephemeral: true
+
         });
     }
 
     // ==========================================
-    // ÖZEL ÖDÜL
+    // ARAÇ ÖDÜLÜ
     // ==========================================
 
     if (
-        customId === 'market_special'
+        product === 'vehicle'
     ) {
-
-        const PRICE = 250000;
-
-        const balance =
-            getUserBalance(
-                interaction.user.id
-            );
-
-        if (
-            balance < PRICE
-        ) {
-
-            return interaction.reply({
-
-                content:
-
-                    '❌ **Yeterli Cash bulunmuyor.**\n\n' +
-
-                    '💰 Bakiyen: `' +
-                    balance.toLocaleString('tr-TR') +
-                    ' Cash`\n' +
-
-                    '⭐ Özel ödül fiyatı: `' +
-                    PRICE.toLocaleString('tr-TR') +
-                    ' Cash`',
-
-                ephemeral: true
-            });
-        }
 
         const result =
             removeUserMoney(
@@ -668,67 +1039,242 @@ async function handleMarketButton(
                     '❌ Satın alma kaydedilemedi.',
 
                 ephemeral: true
+
             });
         }
 
-        const embed =
-            new EmbedBuilder()
-
-                .setColor(0xE74C3C)
-
-                .setTitle(
-                    '⭐ ÖZEL ÖDÜL SATIN ALINDI!'
-                )
-
-                .setDescription(
-
-                    '🎉 ' +
-                    interaction.user +
-                    ' özel ödül satın aldı!\n\n' +
-
-                    '💰 Ödenen: `' +
-                    PRICE.toLocaleString('tr-TR') +
-                    ' Cash`\n\n' +
-
-                    '📸 **Bunun ekran görüntüsünü al ve #cash-ticket üzerinden özel rolünü talep et!**\n\n' +
-
-                    '🎫 Satın alma işlemin tamamlandı.\n' +
-
-                    'Yetkililer ticket üzerinden ödülünü teslim edecektir.\n\n' +
-
-                    '💵 Kalan bakiye: `' +
-                    result.balance.toLocaleString('tr-TR') +
-                    ' Cash`'
-
-                )
-
-                .setFooter({
-                    text:
-                        'CashBot • Özel Ödül'
-                })
-
-                .setTimestamp();
+        await createMarketClaim(
+            interaction,
+            product
+        );
 
         return interaction.reply({
 
             embeds: [
-                embed
+
+                new EmbedBuilder()
+
+                    .setColor(0x3498DB)
+
+                    .setTitle(
+                        '🚗 ARAÇ ÖDÜLÜ SATIN ALINDI!'
+                    )
+
+                    .setDescription(
+
+                        '🎉 Tebrikler ' +
+                        interaction.user +
+                        '!\n\n' +
+
+                        '🚗 **1.000.000 Cash karşılığında araç ödülü satın aldın.**\n\n' +
+
+                        '🏎️ **Galeriden 1 adet araç seçebilirsin.**\n\n' +
+
+                        '📸 Bu mesajın ekran görüntüsünü al.\n\n' +
+
+                        '🎫 Araç talebin yetkililere otomatik olarak gönderildi.\n\n' +
+
+                        '💰 Ödenen: `' +
+                        formatMoney(PRICE) +
+                        ' Cash`\n\n' +
+
+                        '💵 Kalan bakiye: `' +
+                        formatMoney(result.balance) +
+                        ' Cash`'
+
+                    )
+
+                    .setFooter({
+                        text:
+                            'CashBot • Araç Ödülü'
+                    })
+
+                    .setTimestamp()
+
             ],
 
             ephemeral: true
+
         });
     }
 
     // ==========================================
-    // GEÇERSİZ
+    // FIVEM FIGHT PAKET
     // ==========================================
+
+    if (
+        product === 'fight'
+    ) {
+
+        const result =
+            removeUserMoney(
+                interaction.user.id,
+                PRICE
+            );
+
+        if (!result.success) {
+
+            return interaction.reply({
+
+                content:
+                    '❌ Satın alma kaydedilemedi.',
+
+                ephemeral: true
+
+            });
+        }
+
+        await createMarketClaim(
+            interaction,
+            product
+        );
+
+        return interaction.reply({
+
+            embeds: [
+
+                new EmbedBuilder()
+
+                    .setColor(0xE74C3C)
+
+                    .setTitle(
+                        '🔫 FIVEM FIGHT PAKET SATIN ALINDI!'
+                    )
+
+                    .setDescription(
+
+                        '🔥 Tebrikler ' +
+                        interaction.user +
+                        '!\n\n' +
+
+                        '🔫 **FiveM Fight Paket satın alındı.**\n\n' +
+
+                        '📦 Paket içeriği:\n' +
+
+                        '🔫 **1x Fight Silahı**\n' +
+
+                        '🔸 **100x Mermi**\n' +
+
+                        '🩹 **10x Bandaj**\n' +
+
+                        '🛡️ **10x Zırh**\n\n' +
+
+                        '📸 Bu mesajın ekran görüntüsünü al.\n\n' +
+
+                        '🎫 **Paket talebin yetkililere otomatik olarak gönderildi.**\n\n' +
+
+                        '💰 Ödenen: `' +
+                        formatMoney(PRICE) +
+                        ' Cash`\n\n' +
+
+                        '💵 Kalan bakiye: `' +
+                        formatMoney(result.balance) +
+                        ' Cash`'
+
+                    )
+
+                    .setFooter({
+                        text:
+                            'CashBot • FiveM Fight Paket'
+                    })
+
+                    .setTimestamp()
+
+            ],
+
+            ephemeral: true
+
+        });
+    }
+
+    // ==========================================
+    // ÖZEL ROL
+    // ==========================================
+
+    if (
+        product === 'special'
+    ) {
+
+        const result =
+            removeUserMoney(
+                interaction.user.id,
+                PRICE
+            );
+
+        if (!result.success) {
+
+            return interaction.reply({
+
+                content:
+                    '❌ Satın alma kaydedilemedi.',
+
+                ephemeral: true
+
+            });
+        }
+
+        await createMarketClaim(
+            interaction,
+            product
+        );
+
+        return interaction.reply({
+
+            embeds: [
+
+                new EmbedBuilder()
+
+                    .setColor(0xE74C3C)
+
+                    .setTitle(
+                        '⭐ ÖZEL ROL SATIN ALINDI!'
+                    )
+
+                    .setDescription(
+
+                        '🎉 Tebrikler ' +
+                        interaction.user +
+                        '!\n\n' +
+
+                        '⭐ **Özel Rol satın alma işlemin başarıyla tamamlandı.**\n\n' +
+
+                        '📸 Bu mesajın ekran görüntüsünü al.\n\n' +
+
+                        '🎫 Özel rol talebin yetkililere otomatik olarak gönderildi.\n\n' +
+
+                        '⏳ Yetkililer rolünü en kısa sürede teslim edecektir.\n\n' +
+
+                        '💰 Ödenen: `' +
+                        formatMoney(PRICE) +
+                        ' Cash`\n\n' +
+
+                        '💵 Kalan bakiye: `' +
+                        formatMoney(result.balance) +
+                        ' Cash`'
+
+                    )
+
+                    .setFooter({
+                        text:
+                            'CashBot • Özel Rol'
+                    })
+
+                    .setTimestamp()
+
+            ],
+
+            ephemeral: true
+
+        });
+    }
 
     return interaction.reply({
 
         content:
-            '❌ Geçersiz market butonu.',
+            '❌ Geçersiz market ürünü.',
 
         ephemeral: true
+
     });
 }
 
@@ -758,6 +1304,7 @@ async function handleTicketButton(
 
             content:
                 '🔒 Ticket 5 saniye içerisinde kapatılıyor...'
+
         });
 
         setTimeout(
@@ -789,6 +1336,7 @@ async function handleTicketButton(
         sikayet: 'sikayet',
 
         teknik: 'teknik'
+
     };
 
     const ticketName =
@@ -815,6 +1363,7 @@ async function handleTicketButton(
                     channel.topic ===
                         'ticket-' +
                         interaction.user.id
+
                 );
             }
         );
@@ -828,6 +1377,7 @@ async function handleTicketButton(
                 existingChannel,
 
             ephemeral: true
+
         });
     }
 
@@ -880,6 +1430,7 @@ async function handleTicketButton(
                             PermissionFlagsBits.SendMessages,
 
                             PermissionFlagsBits.ReadMessageHistory
+
                         ]
                     },
 
@@ -894,6 +1445,7 @@ async function handleTicketButton(
                             PermissionFlagsBits.SendMessages,
 
                             PermissionFlagsBits.ReadMessageHistory
+
                         ]
                     }
                 ]
@@ -912,6 +1464,7 @@ async function handleTicketButton(
                 '❌ Ticket oluşturulamadı. Bot izinlerini kontrol et.',
 
             ephemeral: true
+
         });
     }
 
@@ -939,11 +1492,14 @@ async function handleTicketButton(
                 '\n\n' +
 
                 '🔒 Ticketı kapatmak için aşağıdaki butonu kullanabilirsiniz.'
+
             )
 
             .setFooter({
+
                 text:
                     'CashBot • Destek Sistemi'
+
             })
 
             .setTimestamp();
@@ -969,6 +1525,7 @@ async function handleTicketButton(
                     .setStyle(
                         ButtonStyle.Danger
                     )
+
             );
 
     await channel.send({
@@ -986,6 +1543,7 @@ async function handleTicketButton(
         components: [
             closeButton
         ]
+
     });
 
     await interaction.reply({
@@ -995,6 +1553,7 @@ async function handleTicketButton(
             channel,
 
         ephemeral: true
+
     });
 }
 
@@ -1040,6 +1599,7 @@ async function handleDiceBattle(
                 '❌ Zar savaşı sistemi şu anda kullanılamıyor.',
 
             ephemeral: true
+
         });
     }
 
@@ -1059,6 +1619,7 @@ async function handleDiceBattle(
                 '❌ Bu zar savaşı artık aktif değil veya süresi dolmuş.',
 
             ephemeral: true
+
         });
     }
 
@@ -1073,6 +1634,7 @@ async function handleDiceBattle(
                 '❌ Bu zar savaşı teklifine sadece davet edilen kişi cevap verebilir.',
 
             ephemeral: true
+
         });
     }
 
@@ -1102,6 +1664,7 @@ async function handleDiceBattle(
             embeds: [],
 
             components: []
+
         });
     }
 
@@ -1127,6 +1690,7 @@ async function handleDiceBattle(
             embeds: [],
 
             components: []
+
         });
     }
 
@@ -1168,6 +1732,7 @@ async function handleDiceBattle(
             embeds: [],
 
             components: []
+
         });
     }
 
@@ -1195,6 +1760,7 @@ async function handleDiceBattle(
             embeds: [],
 
             components: []
+
         });
     }
 
@@ -1227,6 +1793,7 @@ async function handleDiceBattle(
             embeds: [],
 
             components: []
+
         });
     }
 
@@ -1334,7 +1901,7 @@ async function handleDiceBattle(
             '💰 Bahisler iki oyuncuya da geri ödendi.\n\n' +
 
             '💵 İade edilen bahis: `' +
-            bet.toLocaleString('tr-TR') +
+            formatMoney(bet) +
             ' Cash`';
 
     } else {
@@ -1354,8 +1921,9 @@ async function handleDiceBattle(
             '>\n\n' +
 
             '💰 **Kazanç:** `' +
-            totalPrize.toLocaleString('tr-TR') +
+            formatMoney(totalPrize) +
             ' Cash`';
+
     }
 
     const resultEmbed =
@@ -1409,11 +1977,12 @@ async function handleDiceBattle(
 
                     value:
                         '`' +
-                        bet.toLocaleString('tr-TR') +
+                        formatMoney(bet) +
                         ' Cash`',
 
                     inline: true
                 }
+
             )
 
             .setFooter({
@@ -1435,6 +2004,7 @@ async function handleDiceBattle(
         ],
 
         components: []
+
     });
 }
 
