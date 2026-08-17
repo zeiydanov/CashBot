@@ -101,6 +101,69 @@ if (fs.existsSync(commandsPath)) {
 client.economy = economy;
 
 // ==========================================
+// SUNUCUYA ÖZEL AYAR SİSTEMİ
+// ==========================================
+
+function isSecondGuild(guildId) {
+
+    return (
+        guildId &&
+        guildId === process.env.GUILD_ID_2
+    );
+}
+
+function getGuildConfig(guildId) {
+
+    const secondGuild =
+        isSecondGuild(guildId);
+
+    return {
+
+        guildId,
+
+        logChannelId:
+            secondGuild
+                ? process.env.LOG_CHANNEL_ID_2
+                : process.env.LOG_CHANNEL_ID,
+
+        ticketCategoryId:
+            secondGuild
+                ? process.env.TICKET_CATEGORY_ID_2
+                : process.env.TICKET_CATEGORY_ID,
+
+        ticketStaffRoleId:
+            secondGuild
+                ? process.env.TICKET_STAFF_ROLE_ID_2
+                : process.env.TICKET_STAFF_ROLE_ID,
+
+        announcementChannelId:
+            secondGuild
+                ? process.env.ANNOUNCEMENT_CHANNEL_ID_2
+                : process.env.ANNOUNCEMENT_CHANNEL_ID,
+
+        diceRoleId:
+            secondGuild
+                ? process.env.DICE_ROLE_ID_2
+                : process.env.DICE_ROLE_ID,
+
+        diceRoleId2:
+            secondGuild
+                ? process.env.DICE_ROLE_ID_2_2
+                : process.env.DICE_ROLE_ID_2,
+
+        vipRoleId:
+            secondGuild
+                ? process.env.VIP_ROLE_ID_2
+                : process.env.VIP_ROLE_ID,
+
+        weedRoleId:
+            secondGuild
+                ? process.env.WEED_ROLE_ID_2
+                : process.env.WEED_ROLE_ID
+    };
+}
+
+// ==========================================
 // ECONOMY KISA FONKSİYONLARI
 // ==========================================
 
@@ -229,37 +292,43 @@ client.once(
         );
 
         console.log(
-            '💎 VIP: 50.000'
-        );
-
-        console.log(
-            '🌿 Weed Permi: 100.000'
-        );
-
-        console.log(
-            '🎁 Sürpriz Ödül: 200.000'
-        );
-
-        console.log(
-            '🚗 Araç Ödülü: 1.000.000'
-        );
-
-        console.log(
-            '🔫 FiveM Fight Paket: 500.000'
-        );
-
-        console.log(
-            '⭐ Özel Rol: 250.000'
-        );
-
-        console.log(
             '🎲 Zar Savaşı: AKTİF'
+        );
+
+        console.log(
+            '🎫 İki Sunucu Ticket Sistemi: AKTİF'
         );
 
         console.log(
             '================================='
         );
 
+        client.guilds.cache.forEach(
+            function(guild) {
+
+                const config =
+                    getGuildConfig(
+                        guild.id
+                    );
+
+                console.log(
+                    `🏠 ${guild.name} | ${guild.id}`
+                );
+
+                console.log(
+                    `🎫 Ticket Kategori: ${config.ticketCategoryId || 'AYARLANMADI'}`
+                );
+
+                console.log(
+                    `👮 Ticket Staff: ${config.ticketStaffRoleId || 'AYARLANMADI'}`
+                );
+
+                console.log(
+                    `📋 Log: ${config.logChannelId || 'AYARLANMADI'}`
+                );
+
+            }
+        );
     }
 );
 
@@ -406,13 +475,18 @@ async function createMarketClaim(
     product
 ) {
 
+    const config =
+        getGuildConfig(
+            interaction.guild.id
+        );
+
     const logChannelId =
-        process.env.LOG_CHANNEL_ID;
+        config.logChannelId;
 
     if (!logChannelId) {
 
         console.log(
-            '⚠️ LOG_CHANNEL_ID bulunamadı. Talep mesajı gönderilemedi.'
+            `⚠️ ${interaction.guild.name} için LOG_CHANNEL_ID ayarlanmamış.`
         );
 
         return null;
@@ -426,7 +500,7 @@ async function createMarketClaim(
     if (!channel) {
 
         console.log(
-            '⚠️ LOG_CHANNEL_ID kanal olarak bulunamadı.'
+            `⚠️ Market log kanalı bulunamadı: ${logChannelId}`
         );
 
         return null;
@@ -511,7 +585,7 @@ async function createMarketClaim(
 }
 
 // ==========================================
-// MARKET SATIN ALMA BAŞARILI MESAJI
+// MARKET BAŞARILI EMBED
 // ==========================================
 
 function marketSuccessEmbed(
@@ -647,6 +721,15 @@ async function handleMarketButton(
     }
 
     // ==========================================
+    // SUNUCU AYARLARI
+    // ==========================================
+
+    const config =
+        getGuildConfig(
+            interaction.guild.id
+        );
+
+    // ==========================================
     // VIP
     // ==========================================
 
@@ -655,14 +738,14 @@ async function handleMarketButton(
     ) {
 
         const roleId =
-            process.env.VIP_ROLE_ID;
+            config.vipRoleId;
 
         if (!roleId) {
 
             return interaction.reply({
 
                 content:
-                    '❌ `VIP_ROLE_ID` .env dosyasında bulunamadı.',
+                    '❌ Bu sunucu için VIP rolü ayarlanmamış.',
 
                 ephemeral: true
 
@@ -679,7 +762,7 @@ async function handleMarketButton(
             return interaction.reply({
 
                 content:
-                    '❌ VIP rolü sunucuda bulunamadı.',
+                    '❌ VIP rolü bu sunucuda bulunamadı.',
 
                 ephemeral: true
 
@@ -800,14 +883,14 @@ async function handleMarketButton(
     ) {
 
         const roleId =
-            process.env.WEED_ROLE_ID;
+            config.weedRoleId;
 
         if (!roleId) {
 
             return interaction.reply({
 
                 content:
-                    '❌ `WEED_ROLE_ID` .env dosyasında bulunamadı.',
+                    '❌ Bu sunucu için Weed Permi rolü ayarlanmamış.',
 
                 ephemeral: true
 
@@ -824,7 +907,7 @@ async function handleMarketButton(
             return interaction.reply({
 
                 content:
-                    '❌ Weed Permi rolü sunucuda bulunamadı.',
+                    '❌ Weed Permi rolü bu sunucuda bulunamadı.',
 
                 ephemeral: true
 
@@ -1348,6 +1431,197 @@ async function handleTicketButton(
     }
 
     // ==========================================
+    // SUNUCU AYARLARI
+    // ==========================================
+
+    const config =
+        getGuildConfig(
+            interaction.guild.id
+        );
+
+    const ticketCategoryId =
+        config.ticketCategoryId;
+
+    const ticketStaffRoleId =
+        config.ticketStaffRoleId;
+
+    // ==========================================
+    // AYAR KONTROL
+    // ==========================================
+
+    if (!ticketCategoryId) {
+
+        console.error(
+            `❌ ${interaction.guild.name} için TICKET_CATEGORY_ID ayarlanmamış.`
+        );
+
+        return interaction.reply({
+
+            content:
+                '❌ Bu sunucu için Ticket kategorisi ayarlanmamış.',
+
+            ephemeral: true
+
+        });
+    }
+
+    if (!ticketStaffRoleId) {
+
+        console.error(
+            `❌ ${interaction.guild.name} için TICKET_STAFF_ROLE_ID ayarlanmamış.`
+        );
+
+        return interaction.reply({
+
+            content:
+                '❌ Bu sunucu için Ticket yetkili rolü ayarlanmamış.',
+
+            ephemeral: true
+
+        });
+    }
+
+    // ==========================================
+    // KATEGORİ KONTROL
+    // ==========================================
+
+    const ticketCategory =
+        interaction.guild.channels.cache.get(
+            ticketCategoryId
+        );
+
+    if (!ticketCategory) {
+
+        console.error(
+            `❌ Ticket kategorisi bulunamadı: ${ticketCategoryId}`
+        );
+
+        return interaction.reply({
+
+            content:
+                '❌ Ticket kategorisi bu sunucuda bulunamadı. `.env` ayarlarını kontrol et.',
+
+            ephemeral: true
+
+        });
+    }
+
+    if (
+        ticketCategory.type !==
+        ChannelType.GuildCategory
+    ) {
+
+        return interaction.reply({
+
+            content:
+                '❌ Belirtilen Ticket kategori ID\'si bir kategori değil.',
+
+            ephemeral: true
+
+        });
+    }
+
+    // ==========================================
+    // STAFF ROL KONTROL
+    // ==========================================
+
+    const staffRole =
+        interaction.guild.roles.cache.get(
+            ticketStaffRoleId
+        );
+
+    if (!staffRole) {
+
+        console.error(
+            `❌ Ticket staff rolü bulunamadı: ${ticketStaffRoleId}`
+        );
+
+        return interaction.reply({
+
+            content:
+                '❌ Ticket yetkili rolü bu sunucuda bulunamadı.',
+
+            ephemeral: true
+
+        });
+    }
+
+    // ==========================================
+    // BOT KONTROL
+    // ==========================================
+
+    const botMember =
+        interaction.guild.members.me;
+
+    if (!botMember) {
+
+        return interaction.reply({
+
+            content:
+                '❌ Bot sunucuda bulunamadı.',
+
+            ephemeral: true
+
+        });
+    }
+
+    // ==========================================
+    // BOT İZİNLERİ
+    // ==========================================
+
+    if (
+        !botMember.permissions.has(
+            PermissionFlagsBits.ManageChannels
+        )
+    ) {
+
+        console.error(
+            `❌ ${interaction.guild.name}: Botta ManageChannels yetkisi yok.`
+        );
+
+        return interaction.reply({
+
+            content:
+                '❌ Botun **Kanalları Yönet** yetkisi bulunmuyor.',
+
+            ephemeral: true
+
+        });
+    }
+
+    if (
+        !botMember.permissions.has(
+            PermissionFlagsBits.ViewChannel
+        )
+    ) {
+
+        return interaction.reply({
+
+            content:
+                '❌ Botun **Kanalları Görüntüle** yetkisi bulunmuyor.',
+
+            ephemeral: true
+
+        });
+    }
+
+    if (
+        !botMember.permissions.has(
+            PermissionFlagsBits.SendMessages
+        )
+    ) {
+
+        return interaction.reply({
+
+            content:
+                '❌ Botun **Mesaj Gönder** yetkisi bulunmuyor.',
+
+            ephemeral: true
+
+        });
+    }
+
+    // ==========================================
     // AÇIK TICKET
     // ==========================================
 
@@ -1402,7 +1676,7 @@ async function handleTicketButton(
                     ChannelType.GuildText,
 
                 parent:
-                    process.env.TICKET_CATEGORY_ID,
+                    ticketCategoryId,
 
                 topic:
                     'ticket-' +
@@ -1436,7 +1710,7 @@ async function handleTicketButton(
 
                     {
                         id:
-                            process.env.TICKET_STAFF_ROLE_ID,
+                            ticketStaffRoleId,
 
                         allow: [
 
@@ -1445,6 +1719,23 @@ async function handleTicketButton(
                             PermissionFlagsBits.SendMessages,
 
                             PermissionFlagsBits.ReadMessageHistory
+
+                        ]
+                    },
+
+                    {
+                        id:
+                            botMember.id,
+
+                        allow: [
+
+                            PermissionFlagsBits.ViewChannel,
+
+                            PermissionFlagsBits.SendMessages,
+
+                            PermissionFlagsBits.ReadMessageHistory,
+
+                            PermissionFlagsBits.ManageChannels
 
                         ]
                     }
@@ -1461,12 +1752,16 @@ async function handleTicketButton(
         return interaction.reply({
 
             content:
-                '❌ Ticket oluşturulamadı. Bot izinlerini kontrol et.',
+                '❌ Ticket oluşturulamadı. Railway Logs kısmındaki hata detayını kontrol et.',
 
             ephemeral: true
 
         });
     }
+
+    // ==========================================
+    // TICKET EMBED
+    // ==========================================
 
     const embed =
         new EmbedBuilder()
@@ -1504,6 +1799,10 @@ async function handleTicketButton(
 
             .setTimestamp();
 
+    // ==========================================
+    // KAPAT BUTONU
+    // ==========================================
+
     const closeButton =
         new ActionRowBuilder()
             .addComponents(
@@ -1528,23 +1827,50 @@ async function handleTicketButton(
 
             );
 
-    await channel.send({
+    try {
 
-        content:
-            interaction.user +
-            ' <@&' +
-            process.env.TICKET_STAFF_ROLE_ID +
-            '>',
+        await channel.send({
 
-        embeds: [
-            embed
-        ],
+            content:
+                interaction.user +
+                ' <@&' +
+                ticketStaffRoleId +
+                '>',
 
-        components: [
-            closeButton
-        ]
+            embeds: [
+                embed
+            ],
 
-    });
+            components: [
+                closeButton
+            ]
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            '❌ Ticket mesajı gönderilemedi:',
+            error
+        );
+
+        await channel
+            .delete()
+            .catch(() => {});
+
+        return interaction.reply({
+
+            content:
+                '❌ Ticket kanalı oluşturuldu ancak mesaj gönderilemedi. Bot izinlerini kontrol et.',
+
+            ephemeral: true
+
+        });
+    }
+
+    // ==========================================
+    // BAŞARILI
+    // ==========================================
 
     await interaction.reply({
 
@@ -2009,7 +2335,7 @@ async function handleDiceBattle(
 }
 
 // ==========================================
-// TOKEN
+// TOKEN KONTROL
 // ==========================================
 
 if (!process.env.TOKEN) {
