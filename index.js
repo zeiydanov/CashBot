@@ -1,3 +1,4 @@
+```js
 require('dotenv').config();
 
 const fs = require('fs');
@@ -15,11 +16,18 @@ const {
     ButtonStyle
 } = require('discord.js');
 
+// ==============================
+// BOT CLIENT
+// ==============================
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+
+        // Rol bilgisi için gerekli
+        GatewayIntentBits.GuildMembers
     ]
 });
 
@@ -47,6 +55,12 @@ for (const file of commandFiles) {
             command
         );
 
+    } else {
+
+        console.log(
+            `⚠️ ${file} dosyasında data veya execute eksik.`
+        );
+
     }
 }
 
@@ -56,8 +70,14 @@ for (const file of commandFiles) {
 
 client.once('clientReady', () => {
 
+    console.log('');
+    console.log('=================================');
     console.log(`✅ ${client.user.tag} aktif!`);
     console.log(`📦 ${client.commands.size} komut yüklendi.`);
+    console.log(`🏠 ${client.guilds.cache.size} sunucu bağlı.`);
+    console.log('👥 Guild Members Intent: AKTİF');
+    console.log('=================================');
+    console.log('');
 
 });
 
@@ -84,11 +104,17 @@ client.on('interactionCreate', async interaction => {
                 ''
             );
 
-            // Ticket kapatma ayrı çalışacak
+            // ------------------------------------------
+            // TICKET KAPATMA
+            // ------------------------------------------
+
             if (type === 'close') {
 
                 await interaction.reply({
-                    content: '🔒 Ticket 5 saniye içerisinde kapatılıyor...'
+
+                    content:
+                        '🔒 Ticket 5 saniye içerisinde kapatılıyor...'
+
                 });
 
                 setTimeout(async () => {
@@ -101,6 +127,10 @@ client.on('interactionCreate', async interaction => {
 
                 return;
             }
+
+            // ------------------------------------------
+            // TICKET KATEGORİLERİ
+            // ------------------------------------------
 
             const categoryNames = {
 
@@ -395,3 +425,4 @@ client.on('interactionCreate', async interaction => {
 client.login(
     process.env.TOKEN
 );
+```
