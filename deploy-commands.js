@@ -25,21 +25,33 @@ console.log(`📦 Bulunan komut sayısı: ${commands.length}`);
 
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
+// İki sunucunun ID'sini al
+const guildIds = [
+    process.env.GUILD_ID,
+    process.env.GUILD_ID_2
+].filter(Boolean);
+
 (async () => {
     try {
-        console.log('🔄 Discord komutları yenileniyor...');
+        console.log(`🔄 ${guildIds.length} sunucuda slash komutları yenileniyor...`);
 
-        await rest.put(
-            Routes.applicationGuildCommands(
-                process.env.CLIENT_ID,
-                process.env.GUILD_ID
-            ),
-            {
-                body: commands
-            }
-        );
+        for (const guildId of guildIds) {
+            console.log(`📡 Sunucuya yükleniyor: ${guildId}`);
 
-        console.log('✅ Slash komutları başarıyla yenilendi!');
+            await rest.put(
+                Routes.applicationGuildCommands(
+                    process.env.CLIENT_ID,
+                    guildId
+                ),
+                {
+                    body: commands
+                }
+            );
+
+            console.log(`✅ Komutlar yüklendi: ${guildId}`);
+        }
+
+        console.log('🎉 Tüm sunucularda slash komutları başarıyla yenilendi!');
     } catch (error) {
         console.error('❌ HATA:');
         console.error(error);
