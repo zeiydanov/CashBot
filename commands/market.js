@@ -201,7 +201,7 @@ module.exports = {
 
                     '🎁 **Sürpriz Ödül**\n' +
                     '`150.000 Cash`\n' +
-                    '**Boss veya OG\'nin garajındaki 1 araca talip olabilirsin!**\n\n' +
+                    '**SÜRPRİZ ÖDÜL KAZANMA ŞANSI!**\n\n' +
 
                     '⭐ **Özel Ödül**\n' +
                     '`250.000 Cash`\n' +
