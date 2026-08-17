@@ -1,4 +1,3 @@
-```js
 require('dotenv').config();
 
 const fs = require('fs');
@@ -16,18 +15,11 @@ const {
     ButtonStyle
 } = require('discord.js');
 
-// ==============================
-// BOT CLIENT
-// ==============================
-
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
-
-        // Rol bilgisi için gerekli
         GatewayIntentBits.GuildMembers
     ]
 });
@@ -45,23 +37,17 @@ const commandFiles = fs
     .filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
-
     const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
 
-    if ('data' in command && 'execute' in command) {
+    try {
+        const command = require(filePath);
 
-        client.commands.set(
-            command.data.name,
-            command
-        );
-
-    } else {
-
-        console.log(
-            `⚠️ ${file} dosyasında data veya execute eksik.`
-        );
-
+        if (command.data && command.execute) {
+            client.commands.set(command.data.name, command);
+        }
+    } catch (error) {
+        console.error('Komut yuklenemedi: ' + file);
+        console.error(error);
     }
 }
 
@@ -70,79 +56,58 @@ for (const file of commandFiles) {
 // ==============================
 
 client.once('clientReady', () => {
-
-    console.log('');
     console.log('=================================');
-    console.log(`✅ ${client.user.tag} aktif!`);
-    console.log(`📦 ${client.commands.size} komut yüklendi.`);
-    console.log(`🏠 ${client.guilds.cache.size} sunucu bağlı.`);
-    console.log('👥 Guild Members Intent: AKTİF');
+    console.log('CashBot aktif!');
+    console.log('Komut sayisi: ' + client.commands.size);
+    console.log('Sunucu sayisi: ' + client.guilds.cache.size);
+    console.log('Guild Members Intent: AKTIF');
     console.log('=================================');
-    console.log('');
-
 });
 
 // ==============================
-// INTERACTION SİSTEMİ
+// INTERACTION
 // ==============================
 
 client.on('interactionCreate', async interaction => {
 
-    // ==========================================
-    // TICKET BUTONLARI
-    // ==========================================
+    // ==============================
+    // BUTTON
+    // ==============================
 
     if (interaction.isButton()) {
 
-        // ------------------------------------------
-        // TICKET OLUŞTURMA
-        // ------------------------------------------
-
         if (interaction.customId.startsWith('ticket_')) {
 
-            const type = interaction.customId.replace(
-                'ticket_',
-                ''
-            );
+            const type = interaction.customId.replace('ticket_', '');
 
-            // ------------------------------------------
-            // TICKET KAPATMA
-            // ------------------------------------------
+            // ==============================
+            // TICKET KAPAT
+            // ==============================
 
             if (type === 'close') {
 
                 await interaction.reply({
-
-                    content:
-                        '🔒 Ticket 5 saniye içerisinde kapatılıyor...'
-
+                    content: 'Ticket 5 saniye icerisinde kapatiliyor...'
                 });
 
                 setTimeout(async () => {
-
                     await interaction.channel
                         .delete()
                         .catch(() => {});
-
                 }, 5000);
 
                 return;
             }
 
-            // ------------------------------------------
-            // TICKET KATEGORİLERİ
-            // ------------------------------------------
+            // ==============================
+            // TICKET KATEGORILERI
+            // ==============================
 
             const categoryNames = {
-
                 destek: 'destek',
-
                 donate: 'donate',
-
                 sikayet: 'sikayet',
-
                 teknik: 'teknik'
-
             };
 
             const ticketName = categoryNames[type];
@@ -151,34 +116,31 @@ client.on('interactionCreate', async interaction => {
                 return;
             }
 
-            // ------------------------------------------
-            // AÇIK TICKET KONTROLÜ
-            // ------------------------------------------
+            // ==============================
+            // ACIK TICKET KONTROLU
+            // ==============================
 
             const existingChannel =
-                interaction.guild.channels.cache.find(
-                    channel =>
-                        channel.type === ChannelType.GuildText &&
-                        channel.topic ===
-                        `ticket-${interaction.user.id}`
+                interaction.guild.channels.cache.find(channel =>
+                    channel.type === ChannelType.GuildText &&
+                    channel.topic === 'ticket-' + interaction.user.id
                 );
 
             if (existingChannel) {
 
-                return interaction.reply({
-
+                await interaction.reply({
                     content:
-                        `❌ Zaten açık bir ticketın var: ${existingChannel}`,
-
+                        'Zaten acik bir ticketin var: ' +
+                        existingChannel,
                     ephemeral: true
-
                 });
 
+                return;
             }
 
-            // ------------------------------------------
-            // TICKET KANALI OLUŞTUR
-            // ------------------------------------------
+            // ==============================
+            // TICKET OLUSTUR
+            // ==============================
 
             let channel;
 
@@ -188,149 +150,117 @@ client.on('interactionCreate', async interaction => {
                     await interaction.guild.channels.create({
 
                         name:
-                            `ticket-${ticketName}-${interaction.user.username}`,
+                            'ticket-' +
+                            ticketName +
+                            '-' +
+                            interaction.user.username,
 
-                        type:
-                            ChannelType.GuildText,
+                        type: ChannelType.GuildText,
 
                         parent:
                             process.env.TICKET_CATEGORY_ID,
 
                         topic:
-                            `ticket-${interaction.user.id}`,
+                            'ticket-' +
+                            interaction.user.id,
 
                         permissionOverwrites: [
 
-                            // Herkese kapat
                             {
-                                id:
-                                    interaction.guild.id,
+                                id: interaction.guild.id,
 
                                 deny: [
                                     PermissionFlagsBits.ViewChannel
                                 ]
                             },
 
-                            // Ticket sahibi
                             {
-                                id:
-                                    interaction.user.id,
+                                id: interaction.user.id,
 
                                 allow: [
-
                                     PermissionFlagsBits.ViewChannel,
-
                                     PermissionFlagsBits.SendMessages,
-
                                     PermissionFlagsBits.ReadMessageHistory
-
                                 ]
                             },
 
-                            // Yetkili rolü
                             {
-                                id:
-                                    process.env.TICKET_STAFF_ROLE_ID,
+                                id: process.env.TICKET_STAFF_ROLE_ID,
 
                                 allow: [
-
                                     PermissionFlagsBits.ViewChannel,
-
                                     PermissionFlagsBits.SendMessages,
-
                                     PermissionFlagsBits.ReadMessageHistory
-
                                 ]
                             }
 
                         ]
-
                     });
 
             } catch (error) {
 
                 console.error(
-                    '❌ Ticket oluşturma hatası:',
+                    'Ticket olusturma hatasi:',
                     error
                 );
 
-                return interaction.reply({
-
+                await interaction.reply({
                     content:
-                        '❌ Ticket oluşturulamadı. Botun kategori ve kanal izinlerini kontrol et.',
-
+                        'Ticket olusturulamadi. Bot izinlerini kontrol et.',
                     ephemeral: true
-
                 });
 
+                return;
             }
 
-            // ------------------------------------------
+            // ==============================
             // TICKET EMBED
-            // ------------------------------------------
+            // ==============================
 
             const embed =
                 new EmbedBuilder()
-
-                    .setTitle('🎫 Ticket Oluşturuldu')
-
+                    .setTitle('Ticket Olusturuldu')
                     .setDescription(
-
-                        `Merhaba ${interaction.user}!\n\n` +
-
-                        `Talebiniz başarıyla oluşturuldu.\n` +
-
-                        `Yetkililer en kısa sürede sizinle ilgilenecektir.\n\n` +
-
-                        `📂 **Kategori:** ${ticketName}\n\n` +
-
-                        `🔒 Ticketı kapatmak için aşağıdaki butonu kullanabilirsiniz.`
-
+                        'Merhaba ' +
+                        interaction.user +
+                        '!\n\n' +
+                        'Talebiniz basariyla olusturuldu.\n' +
+                        'Yetkililer en kisa surede sizinle ilgilenecektir.\n\n' +
+                        'Kategori: **' +
+                        ticketName +
+                        '**\n\n' +
+                        'Ticketi kapatmak icin asagidaki butonu kullanabilirsiniz.'
                     )
-
                     .setFooter({
-
-                        text:
-                            'CashBot • Destek Sistemi'
-
+                        text: 'CashBot - Destek Sistemi'
                     })
-
                     .setTimestamp();
 
-            // ------------------------------------------
-            // KAPATMA BUTONU
-            // ------------------------------------------
+            // ==============================
+            // KAPAT BUTONU
+            // ==============================
 
             const closeButton =
                 new ActionRowBuilder()
                     .addComponents(
-
                         new ButtonBuilder()
-
-                            .setCustomId(
-                                'ticket_close'
-                            )
-
-                            .setLabel(
-                                'Ticket Kapat'
-                            )
-
+                            .setCustomId('ticket_close')
+                            .setLabel('Ticket Kapat')
                             .setEmoji('🔒')
-
-                            .setStyle(
-                                ButtonStyle.Danger
-                            )
-
+                            .setStyle(ButtonStyle.Danger)
                     );
 
-            // ------------------------------------------
+            // ==============================
             // TICKET MESAJI
-            // ------------------------------------------
+            // ==============================
 
             await channel.send({
 
                 content:
-                    `${interaction.user} <@&${process.env.TICKET_STAFF_ROLE_ID}>`,
+                    interaction.user +
+                    ' <@&' +
+                    process.env.TICKET_STAFF_ROLE_ID +
+                    '>',
 
                 embeds: [
                     embed
@@ -339,29 +269,24 @@ client.on('interactionCreate', async interaction => {
                 components: [
                     closeButton
                 ]
-
             });
-
-            // ------------------------------------------
-            // KULLANICIYA BİLGİ
-            // ------------------------------------------
 
             await interaction.reply({
 
                 content:
-                    `✅ Ticket oluşturuldu: ${channel}`,
+                    'Ticket olusturuldu: ' +
+                    channel,
 
                 ephemeral: true
-
             });
 
             return;
         }
     }
 
-    // ==========================================
+    // ==============================
     // SLASH COMMAND
-    // ==========================================
+    // ==============================
 
     if (!interaction.isChatInputCommand()) {
         return;
@@ -378,14 +303,12 @@ client.on('interactionCreate', async interaction => {
 
     try {
 
-        await command.execute(
-            interaction
-        );
+        await command.execute(interaction);
 
     } catch (error) {
 
         console.error(
-            '❌ Komut hatası:',
+            'Komut hatasi:',
             error
         );
 
@@ -397,10 +320,9 @@ client.on('interactionCreate', async interaction => {
             await interaction.followUp({
 
                 content:
-                    '❌ Komut çalıştırılırken bir hata oluştu.',
+                    'Komut calistirilirken bir hata olustu.',
 
                 ephemeral: true
-
             });
 
         } else {
@@ -408,22 +330,16 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({
 
                 content:
-                    '❌ Komut çalıştırılırken bir hata oluştu.',
+                    'Komut calistirilirken bir hata olustu.',
 
                 ephemeral: true
-
             });
-
         }
     }
-
 });
 
 // ==============================
-// BOTU BAŞLAT
+// BOTU BASLAT
 // ==============================
 
-client.login(
-    process.env.TOKEN
-);
-```
+client.login(process.env.TOKEN);
