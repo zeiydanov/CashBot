@@ -16,6 +16,12 @@ const {
 } = require('discord.js');
 
 // ==========================================
+// ECONOMY SİSTEMİ
+// ==========================================
+
+const economy = require('./utils/economy');
+
+// ==========================================
 // BOT CLIENT
 // ==========================================
 
@@ -39,186 +45,84 @@ const commandsPath = path.join(
     'commands'
 );
 
-const commandFiles = fs
-    .readdirSync(commandsPath)
-    .filter(file => file.endsWith('.js'));
+if (fs.existsSync(commandsPath)) {
 
-for (const file of commandFiles) {
+    const commandFiles = fs
+        .readdirSync(commandsPath)
+        .filter(file => file.endsWith('.js'));
 
-    const filePath = path.join(
-        commandsPath,
-        file
-    );
+    for (const file of commandFiles) {
 
-    try {
-
-        const command = require(filePath);
-
-        if (
-            command.data &&
-            command.execute
-        ) {
-
-            client.commands.set(
-                command.data.name,
-                command
-            );
-
-        } else {
-
-            console.log(
-                '⚠️ ' +
-                file +
-                ' dosyasında data veya execute eksik.'
-            );
-
-        }
-
-    } catch (error) {
-
-        console.error(
-            '❌ Komut yüklenemedi: ' +
+        const filePath = path.join(
+            commandsPath,
             file
         );
 
-        console.error(error);
+        try {
 
+            const command = require(filePath);
+
+            if (
+                command.data &&
+                command.execute
+            ) {
+
+                client.commands.set(
+                    command.data.name,
+                    command
+                );
+
+                console.log(
+                    `✅ Komut yüklendi: /${command.data.name}`
+                );
+
+            } else {
+
+                console.log(
+                    `⚠️ ${file} dosyasında data veya execute eksik.`
+                );
+            }
+
+        } catch (error) {
+
+            console.error(
+                `❌ Komut yüklenemedi: ${file}`
+            );
+
+            console.error(error);
+        }
     }
 }
 
 // ==========================================
-// ECONOMY DOSYASI
+// ECONOMY CLIENT'A BAĞLA
 // ==========================================
 
-const economyPath = path.join(
-    __dirname,
-    'data',
-    'economy.json'
-);
+client.economy = economy;
 
-function loadEconomy() {
+// ==========================================
+// ECONOMY KISA FONKSİYONLARI
+// ==========================================
 
-    try {
+function getUserBalance(userId) {
 
-        if (
-            !fs.existsSync(
-                path.dirname(economyPath)
-            )
-        ) {
-
-            fs.mkdirSync(
-                path.dirname(economyPath),
-                {
-                    recursive: true
-                }
-            );
-
-        }
-
-        if (
-            !fs.existsSync(
-                economyPath
-            )
-        ) {
-
-            fs.writeFileSync(
-                economyPath,
-                '{}'
-            );
-
-        }
-
-        return JSON.parse(
-            fs.readFileSync(
-                economyPath,
-                'utf8'
-            )
-        );
-
-    } catch (error) {
-
-        console.error(
-            '❌ Economy okuma hatası:',
-            error
-        );
-
-        return {};
-
-    }
+    return economy.getBalance(userId);
 }
 
-// ==========================================
-// ECONOMY KAYDET
-// ==========================================
+function addUserMoney(userId, amount) {
 
-function saveEconomy(data) {
-
-    fs.writeFileSync(
-        economyPath,
-        JSON.stringify(
-            data,
-            null,
-            4
-        )
+    return economy.addMoney(
+        userId,
+        amount
     );
-
 }
 
-// ==========================================
-// KULLANICI EKONOMİ VERİSİ
-// ==========================================
+function removeUserMoney(userId, amount) {
 
-function getEconomyUser(
-    data,
-    userId
-) {
-
-    if (!data[userId]) {
-
-        data[userId] = {
-
-            money: 0,
-
-            xp: 0,
-
-            lastDaily: 0
-
-        };
-
-    }
-
-    if (
-        typeof data[userId].money !== 'number'
-    ) {
-
-        data[userId].money =
-            Number(
-                data[userId].money
-            ) || 0;
-
-    }
-
-    if (
-        typeof data[userId].xp !== 'number'
-    ) {
-
-        data[userId].xp =
-            Number(
-                data[userId].xp
-            ) || 0;
-
-    }
-
-    if (
-        typeof data[userId].lastDaily !== 'number'
-    ) {
-
-        data[userId].lastDaily = 0;
-
-    }
-
-    return data[userId];
-
+    return economy.removeMoney(
+        userId,
+        amount
+    );
 }
 
 // ==========================================
@@ -234,21 +138,33 @@ client.once(
         );
 
         console.log(
-            'CashBot aktif!'
+            `🤖 ${client.user.tag} aktif!`
         );
 
         console.log(
-            'Komut sayisi: ' +
+            '📦 Komut sayısı: ' +
             client.commands.size
         );
 
         console.log(
-            'Sunucu sayisi: ' +
+            '🏠 Sunucu sayısı: ' +
             client.guilds.cache.size
         );
 
         console.log(
-            'Guild Members Intent: AKTIF'
+            '👥 Guild Members Intent: AKTİF'
+        );
+
+        console.log(
+            '💰 Economy System: AKTİF'
+        );
+
+        console.log(
+            '🛒 Cash Market: AKTİF'
+        );
+
+        console.log(
+            '🎲 Zar Savaşı: AKTİF'
         );
 
         console.log(
@@ -259,7 +175,7 @@ client.once(
 );
 
 // ==========================================
-// INTERACTION SİSTEMİ
+// INTERACTION
 // ==========================================
 
 client.on(
@@ -273,16 +189,12 @@ client.on(
         if (interaction.isButton()) {
 
             // ==========================================
-            // ZAR SAVAŞI KABUL / REDDET
+            // ZAR
             // ==========================================
 
             if (
-                interaction.customId.startsWith(
-                    'zar_kabul_'
-                ) ||
-                interaction.customId.startsWith(
-                    'zar_reddet_'
-                )
+                interaction.customId.startsWith('zar_kabul_') ||
+                interaction.customId.startsWith('zar_reddet_')
             ) {
 
                 await handleDiceBattle(
@@ -290,7 +202,21 @@ client.on(
                 );
 
                 return;
+            }
 
+            // ==========================================
+            // MARKET
+            // ==========================================
+
+            if (
+                interaction.customId.startsWith('market_')
+            ) {
+
+                await handleMarketButton(
+                    interaction
+                );
+
+                return;
             }
 
             // ==========================================
@@ -298,315 +224,15 @@ client.on(
             // ==========================================
 
             if (
-                interaction.customId.startsWith(
-                    'ticket_'
-                )
+                interaction.customId.startsWith('ticket_')
             ) {
 
-                const type =
-                    interaction.customId.replace(
-                        'ticket_',
-                        ''
-                    );
-
-                // ==========================================
-                // TICKET KAPAT
-                // ==========================================
-
-                if (
-                    type === 'close'
-                ) {
-
-                    await interaction.reply({
-
-                        content:
-                            '🔒 Ticket 5 saniye içerisinde kapatılıyor...'
-
-                    });
-
-                    setTimeout(
-                        async function() {
-
-                            await interaction.channel
-                                .delete()
-                                .catch(
-                                    function() {}
-                                );
-
-                        },
-                        5000
-                    );
-
-                    return;
-
-                }
-
-                // ==========================================
-                // TICKET KATEGORİLERİ
-                // ==========================================
-
-                const categoryNames = {
-
-                    destek:
-                        'destek',
-
-                    donate:
-                        'donate',
-
-                    sikayet:
-                        'sikayet',
-
-                    teknik:
-                        'teknik'
-
-                };
-
-                const ticketName =
-                    categoryNames[type];
-
-                if (!ticketName) {
-
-                    return;
-
-                }
-
-                // ==========================================
-                // AÇIK TICKET KONTROLÜ
-                // ==========================================
-
-                const existingChannel =
-                    interaction.guild.channels.cache.find(
-                        function(channel) {
-
-                            return (
-
-                                channel.type ===
-                                    ChannelType.GuildText &&
-
-                                channel.topic ===
-                                    'ticket-' +
-                                    interaction.user.id
-
-                            );
-
-                        }
-                    );
-
-                if (existingChannel) {
-
-                    return interaction.reply({
-
-                        content:
-                            '❌ Zaten açık bir ticketın var: ' +
-                            existingChannel,
-
-                        ephemeral: true
-
-                    });
-
-                }
-
-                // ==========================================
-                // TICKET OLUŞTUR
-                // ==========================================
-
-                let channel;
-
-                try {
-
-                    channel =
-                        await interaction.guild.channels.create({
-
-                            name:
-                                'ticket-' +
-                                ticketName +
-                                '-' +
-                                interaction.user.username,
-
-                            type:
-                                ChannelType.GuildText,
-
-                            parent:
-                                process.env.TICKET_CATEGORY_ID,
-
-                            topic:
-                                'ticket-' +
-                                interaction.user.id,
-
-                            permissionOverwrites: [
-
-                                {
-                                    id:
-                                        interaction.guild.id,
-
-                                    deny: [
-
-                                        PermissionFlagsBits.ViewChannel
-
-                                    ]
-
-                                },
-
-                                {
-                                    id:
-                                        interaction.user.id,
-
-                                    allow: [
-
-                                        PermissionFlagsBits.ViewChannel,
-
-                                        PermissionFlagsBits.SendMessages,
-
-                                        PermissionFlagsBits.ReadMessageHistory
-
-                                    ]
-
-                                },
-
-                                {
-                                    id:
-                                        process.env.TICKET_STAFF_ROLE_ID,
-
-                                    allow: [
-
-                                        PermissionFlagsBits.ViewChannel,
-
-                                        PermissionFlagsBits.SendMessages,
-
-                                        PermissionFlagsBits.ReadMessageHistory
-
-                                    ]
-
-                                }
-
-                            ]
-
-                        });
-
-                } catch (error) {
-
-                    console.error(
-                        '❌ Ticket oluşturma hatası:',
-                        error
-                    );
-
-                    return interaction.reply({
-
-                        content:
-                            '❌ Ticket oluşturulamadı. Bot izinlerini kontrol et.',
-
-                        ephemeral: true
-
-                    });
-
-                }
-
-                // ==========================================
-                // TICKET EMBED
-                // ==========================================
-
-                const embed =
-                    new EmbedBuilder()
-
-                        .setTitle(
-                            '🎫 Ticket Oluşturuldu'
-                        )
-
-                        .setDescription(
-
-                            'Merhaba ' +
-                            interaction.user +
-                            '!\n\n' +
-
-                            'Talebiniz başarıyla oluşturuldu.\n' +
-
-                            'Yetkililer en kısa sürede sizinle ilgilenecektir.\n\n' +
-
-                            '📂 **Kategori:** ' +
-                            ticketName +
-                            '\n\n' +
-
-                            '🔒 Ticketı kapatmak için aşağıdaki butonu kullanabilirsiniz.'
-
-                        )
-
-                        .setFooter({
-
-                            text:
-                                'CashBot - Destek Sistemi'
-
-                        })
-
-                        .setTimestamp();
-
-                // ==========================================
-                // KAPAT BUTONU
-                // ==========================================
-
-                const closeButton =
-                    new ActionRowBuilder()
-                        .addComponents(
-
-                            new ButtonBuilder()
-
-                                .setCustomId(
-                                    'ticket_close'
-                                )
-
-                                .setLabel(
-                                    'Ticket Kapat'
-                                )
-
-                                .setEmoji(
-                                    '🔒'
-                                )
-
-                                .setStyle(
-                                    ButtonStyle.Danger
-                                )
-
-                        );
-
-                // ==========================================
-                // TICKET MESAJI
-                // ==========================================
-
-                await channel.send({
-
-                    content:
-                        interaction.user +
-                        ' <@&' +
-                        process.env.TICKET_STAFF_ROLE_ID +
-                        '>',
-
-                    embeds: [
-                        embed
-                    ],
-
-                    components: [
-                        closeButton
-                    ]
-
-                });
-
-                // ==========================================
-                // KULLANICIYA BİLGİ
-                // ==========================================
-
-                await interaction.reply({
-
-                    content:
-                        '✅ Ticket oluşturuldu: ' +
-                        channel,
-
-                    ephemeral: true
-
-                });
+                await handleTicketButton(
+                    interaction
+                );
 
                 return;
-
             }
-
         }
 
         // ==========================================
@@ -618,7 +244,6 @@ client.on(
         ) {
 
             return;
-
         }
 
         const command =
@@ -629,7 +254,6 @@ client.on(
         if (!command) {
 
             return;
-
         }
 
         try {
@@ -645,40 +269,737 @@ client.on(
                 error
             );
 
-            if (
-                interaction.replied ||
-                interaction.deferred
-            ) {
+            try {
 
-                await interaction.followUp({
+                if (
+                    interaction.replied ||
+                    interaction.deferred
+                ) {
 
-                    content:
-                        '❌ Komut çalıştırılırken bir hata oluştu.',
+                    await interaction.followUp({
 
-                    ephemeral: true
+                        content:
+                            '❌ Komut çalıştırılırken bir hata oluştu.',
 
-                });
+                        ephemeral: true
 
-            } else {
+                    });
 
-                await interaction.reply({
+                } else {
 
-                    content:
-                        '❌ Komut çalıştırılırken bir hata oluştu.',
+                    await interaction.reply({
 
-                    ephemeral: true
+                        content:
+                            '❌ Komut çalıştırılırken bir hata oluştu.',
 
-                });
+                        ephemeral: true
 
+                    });
+                }
+
+            } catch (replyError) {
+
+                console.error(
+                    '❌ Hata mesajı gönderilemedi:',
+                    replyError
+                );
             }
-
         }
-
     }
 );
 
 // ==========================================
-// ZAR SAVAŞI SİSTEMİ
+// MARKET
+// ==========================================
+
+async function handleMarketButton(
+    interaction
+) {
+
+    const customId =
+        interaction.customId;
+
+    // ==========================================
+    // VIP
+    // ==========================================
+
+    if (
+        customId === 'market_vip'
+    ) {
+
+        const PRICE = 50000;
+
+        const roleId =
+            process.env.VIP_ROLE_ID;
+
+        if (!roleId) {
+
+            return interaction.reply({
+
+                content:
+                    '❌ VIP_ROLE_ID .env dosyasında bulunamadı.',
+
+                ephemeral: true
+            });
+        }
+
+        const role =
+            interaction.guild.roles.cache.get(
+                roleId
+            );
+
+        if (!role) {
+
+            return interaction.reply({
+
+                content:
+                    '❌ VIP rolü sunucuda bulunamadı.',
+
+                ephemeral: true
+            });
+        }
+
+        // ==========================================
+        // ZATEN VIP
+        // ==========================================
+
+        if (
+            interaction.member.roles.cache.has(
+                roleId
+            )
+        ) {
+
+            return interaction.reply({
+
+                content:
+                    '❌ Zaten **VIP** rolüne sahipsin.',
+
+                ephemeral: true
+            });
+        }
+
+        // ==========================================
+        // ECONOMY
+        // ==========================================
+
+        const balance =
+            getUserBalance(
+                interaction.user.id
+            );
+
+        // ==========================================
+        // PARA KONTROL
+        // ==========================================
+
+        if (
+            balance < PRICE
+        ) {
+
+            return interaction.reply({
+
+                content:
+
+                    '❌ **Yeterli Cash bulunmuyor.**\n\n' +
+
+                    '💰 Bakiyen: `' +
+                    balance.toLocaleString('tr-TR') +
+                    ' Cash`\n' +
+
+                    '💎 VIP fiyatı: `' +
+                    PRICE.toLocaleString('tr-TR') +
+                    ' Cash`',
+
+                ephemeral: true
+            });
+        }
+
+        // ==========================================
+        // ROLÜ VER
+        // ==========================================
+
+        try {
+
+            await interaction.member.roles.add(
+                role
+            );
+
+        } catch (error) {
+
+            console.error(
+                '❌ VIP rolü verme hatası:',
+                error
+            );
+
+            return interaction.reply({
+
+                content:
+
+                    '❌ VIP rolü verilemedi.\n\n' +
+
+                    'Botun **Manage Roles** yetkisini ve VIP rolünün bot rolünün altında olduğunu kontrol et.',
+
+                ephemeral: true
+            });
+        }
+
+        // ==========================================
+        // CASH DÜŞ
+        // ==========================================
+
+        const result =
+            removeUserMoney(
+                interaction.user.id,
+                PRICE
+            );
+
+        if (!result.success) {
+
+            await interaction.member.roles
+                .remove(role)
+                .catch(() => {});
+
+            return interaction.reply({
+
+                content:
+                    '❌ Cash işlemi kaydedilemedi. VIP rolün geri alındı.',
+
+                ephemeral: true
+            });
+        }
+
+        // ==========================================
+        // BAŞARILI
+        // ==========================================
+
+        const embed =
+            new EmbedBuilder()
+
+                .setColor(0xF1C40F)
+
+                .setTitle(
+                    '💎 VIP SATIN ALINDI!'
+                )
+
+                .setDescription(
+
+                    '🎉 Tebrikler ' +
+                    interaction.user +
+                    '!\n\n' +
+
+                    '💎 **VIP rolün başarıyla verildi.**\n\n' +
+
+                    '💰 Ödenen: `' +
+                    PRICE.toLocaleString('tr-TR') +
+                    ' Cash`\n\n' +
+
+                    '💵 Kalan bakiye: `' +
+                    result.balance.toLocaleString('tr-TR') +
+                    ' Cash`'
+
+                )
+
+                .setFooter({
+                    text:
+                        'CashBot • Cash Market'
+                })
+
+                .setTimestamp();
+
+        return interaction.reply({
+
+            embeds: [
+                embed
+            ],
+
+            ephemeral: true
+        });
+    }
+
+    // ==========================================
+    // SÜRPRİZ
+    // ==========================================
+
+    if (
+        customId === 'market_surprise'
+    ) {
+
+        const PRICE = 150000;
+
+        const balance =
+            getUserBalance(
+                interaction.user.id
+            );
+
+        if (
+            balance < PRICE
+        ) {
+
+            return interaction.reply({
+
+                content:
+
+                    '❌ **Yeterli Cash bulunmuyor.**\n\n' +
+
+                    '💰 Bakiyen: `' +
+                    balance.toLocaleString('tr-TR') +
+                    ' Cash`\n' +
+
+                    '🎁 Sürpriz ödül fiyatı: `' +
+                    PRICE.toLocaleString('tr-TR') +
+                    ' Cash`',
+
+                ephemeral: true
+            });
+        }
+
+        const result =
+            removeUserMoney(
+                interaction.user.id,
+                PRICE
+            );
+
+        if (!result.success) {
+
+            return interaction.reply({
+
+                content:
+                    '❌ Satın alma kaydedilemedi.',
+
+                ephemeral: true
+            });
+        }
+
+        const embed =
+            new EmbedBuilder()
+
+                .setColor(0x9B59B6)
+
+                .setTitle(
+                    '🎁 SÜRPRİZ ÖDÜL SATIN ALINDI!'
+                )
+
+                .setDescription(
+
+                    '🎉 ' +
+                    interaction.user +
+                    ' sürpriz ödülü satın aldı!\n\n' +
+
+                    '💰 Ödenen: `' +
+                    PRICE.toLocaleString('tr-TR') +
+                    ' Cash`\n\n' +
+
+                    '🚗 **Boss veya OG\'nin garajındaki 1 araca talip olabilirsin!**\n\n' +
+
+                    '📸 **Bu mesajın ekran görüntüsünü al.**\n\n' +
+
+                    '🎫 Ödülünü almak için **#cash-ticket** üzerinden talebini belirt.\n\n' +
+
+                    '💵 Kalan bakiye: `' +
+                    result.balance.toLocaleString('tr-TR') +
+                    ' Cash`'
+
+                )
+
+                .setFooter({
+                    text:
+                        'CashBot • Sürpriz Ödül'
+                })
+
+                .setTimestamp();
+
+        return interaction.reply({
+
+            embeds: [
+                embed
+            ],
+
+            ephemeral: true
+        });
+    }
+
+    // ==========================================
+    // ÖZEL ÖDÜL
+    // ==========================================
+
+    if (
+        customId === 'market_special'
+    ) {
+
+        const PRICE = 250000;
+
+        const balance =
+            getUserBalance(
+                interaction.user.id
+            );
+
+        if (
+            balance < PRICE
+        ) {
+
+            return interaction.reply({
+
+                content:
+
+                    '❌ **Yeterli Cash bulunmuyor.**\n\n' +
+
+                    '💰 Bakiyen: `' +
+                    balance.toLocaleString('tr-TR') +
+                    ' Cash`\n' +
+
+                    '⭐ Özel ödül fiyatı: `' +
+                    PRICE.toLocaleString('tr-TR') +
+                    ' Cash`',
+
+                ephemeral: true
+            });
+        }
+
+        const result =
+            removeUserMoney(
+                interaction.user.id,
+                PRICE
+            );
+
+        if (!result.success) {
+
+            return interaction.reply({
+
+                content:
+                    '❌ Satın alma kaydedilemedi.',
+
+                ephemeral: true
+            });
+        }
+
+        const embed =
+            new EmbedBuilder()
+
+                .setColor(0xE74C3C)
+
+                .setTitle(
+                    '⭐ ÖZEL ÖDÜL SATIN ALINDI!'
+                )
+
+                .setDescription(
+
+                    '🎉 ' +
+                    interaction.user +
+                    ' özel ödül satın aldı!\n\n' +
+
+                    '💰 Ödenen: `' +
+                    PRICE.toLocaleString('tr-TR') +
+                    ' Cash`\n\n' +
+
+                    '📸 **Bunun ekran görüntüsünü al ve #cash-ticket üzerinden özel rolünü talep et!**\n\n' +
+
+                    '🎫 Satın alma işlemin tamamlandı.\n' +
+
+                    'Yetkililer ticket üzerinden ödülünü teslim edecektir.\n\n' +
+
+                    '💵 Kalan bakiye: `' +
+                    result.balance.toLocaleString('tr-TR') +
+                    ' Cash`'
+
+                )
+
+                .setFooter({
+                    text:
+                        'CashBot • Özel Ödül'
+                })
+
+                .setTimestamp();
+
+        return interaction.reply({
+
+            embeds: [
+                embed
+            ],
+
+            ephemeral: true
+        });
+    }
+
+    // ==========================================
+    // GEÇERSİZ
+    // ==========================================
+
+    return interaction.reply({
+
+        content:
+            '❌ Geçersiz market butonu.',
+
+        ephemeral: true
+    });
+}
+
+// ==========================================
+// TICKET SİSTEMİ
+// ==========================================
+
+async function handleTicketButton(
+    interaction
+) {
+
+    const type =
+        interaction.customId.replace(
+            'ticket_',
+            ''
+        );
+
+    // ==========================================
+    // KAPAT
+    // ==========================================
+
+    if (
+        type === 'close'
+    ) {
+
+        await interaction.reply({
+
+            content:
+                '🔒 Ticket 5 saniye içerisinde kapatılıyor...'
+        });
+
+        setTimeout(
+            async function() {
+
+                await interaction.channel
+                    .delete()
+                    .catch(
+                        function() {}
+                    );
+
+            },
+            5000
+        );
+
+        return;
+    }
+
+    // ==========================================
+    // KATEGORİLER
+    // ==========================================
+
+    const categoryNames = {
+
+        destek: 'destek',
+
+        donate: 'donate',
+
+        sikayet: 'sikayet',
+
+        teknik: 'teknik'
+    };
+
+    const ticketName =
+        categoryNames[type];
+
+    if (!ticketName) {
+
+        return;
+    }
+
+    // ==========================================
+    // AÇIK TICKET
+    // ==========================================
+
+    const existingChannel =
+        interaction.guild.channels.cache.find(
+            function(channel) {
+
+                return (
+
+                    channel.type ===
+                        ChannelType.GuildText &&
+
+                    channel.topic ===
+                        'ticket-' +
+                        interaction.user.id
+                );
+            }
+        );
+
+    if (existingChannel) {
+
+        return interaction.reply({
+
+            content:
+                '❌ Zaten açık bir ticketın var: ' +
+                existingChannel,
+
+            ephemeral: true
+        });
+    }
+
+    // ==========================================
+    // TICKET OLUŞTUR
+    // ==========================================
+
+    let channel;
+
+    try {
+
+        channel =
+            await interaction.guild.channels.create({
+
+                name:
+                    'ticket-' +
+                    ticketName +
+                    '-' +
+                    interaction.user.username,
+
+                type:
+                    ChannelType.GuildText,
+
+                parent:
+                    process.env.TICKET_CATEGORY_ID,
+
+                topic:
+                    'ticket-' +
+                    interaction.user.id,
+
+                permissionOverwrites: [
+
+                    {
+                        id:
+                            interaction.guild.id,
+
+                        deny: [
+                            PermissionFlagsBits.ViewChannel
+                        ]
+                    },
+
+                    {
+                        id:
+                            interaction.user.id,
+
+                        allow: [
+
+                            PermissionFlagsBits.ViewChannel,
+
+                            PermissionFlagsBits.SendMessages,
+
+                            PermissionFlagsBits.ReadMessageHistory
+                        ]
+                    },
+
+                    {
+                        id:
+                            process.env.TICKET_STAFF_ROLE_ID,
+
+                        allow: [
+
+                            PermissionFlagsBits.ViewChannel,
+
+                            PermissionFlagsBits.SendMessages,
+
+                            PermissionFlagsBits.ReadMessageHistory
+                        ]
+                    }
+                ]
+            });
+
+    } catch (error) {
+
+        console.error(
+            '❌ Ticket oluşturma hatası:',
+            error
+        );
+
+        return interaction.reply({
+
+            content:
+                '❌ Ticket oluşturulamadı. Bot izinlerini kontrol et.',
+
+            ephemeral: true
+        });
+    }
+
+    const embed =
+        new EmbedBuilder()
+
+            .setColor(0x5865F2)
+
+            .setTitle(
+                '🎫 Ticket Oluşturuldu'
+            )
+
+            .setDescription(
+
+                'Merhaba ' +
+                interaction.user +
+                '!\n\n' +
+
+                'Talebiniz başarıyla oluşturuldu.\n' +
+
+                'Yetkililer en kısa sürede sizinle ilgilenecektir.\n\n' +
+
+                '📂 **Kategori:** ' +
+                ticketName +
+                '\n\n' +
+
+                '🔒 Ticketı kapatmak için aşağıdaki butonu kullanabilirsiniz.'
+            )
+
+            .setFooter({
+                text:
+                    'CashBot • Destek Sistemi'
+            })
+
+            .setTimestamp();
+
+    const closeButton =
+        new ActionRowBuilder()
+            .addComponents(
+
+                new ButtonBuilder()
+
+                    .setCustomId(
+                        'ticket_close'
+                    )
+
+                    .setLabel(
+                        'Ticket Kapat'
+                    )
+
+                    .setEmoji(
+                        '🔒'
+                    )
+
+                    .setStyle(
+                        ButtonStyle.Danger
+                    )
+            );
+
+    await channel.send({
+
+        content:
+            interaction.user +
+            ' <@&' +
+            process.env.TICKET_STAFF_ROLE_ID +
+            '>',
+
+        embeds: [
+            embed
+        ],
+
+        components: [
+            closeButton
+        ]
+    });
+
+    await interaction.reply({
+
+        content:
+            '✅ Ticket oluşturuldu: ' +
+            channel,
+
+        ephemeral: true
+    });
+}
+
+// ==========================================
+// ZAR SAVAŞI
 // ==========================================
 
 async function handleDiceBattle(
@@ -703,10 +1024,6 @@ async function handleDiceBattle(
             prefix.length
         );
 
-    // ==========================================
-    // ZAR SAVAŞI KOMUTUNU BUL
-    // ==========================================
-
     const diceCommand =
         client.commands.get(
             'zar-savas'
@@ -723,9 +1040,7 @@ async function handleDiceBattle(
                 '❌ Zar savaşı sistemi şu anda kullanılamıyor.',
 
             ephemeral: true
-
         });
-
     }
 
     const activeBattles =
@@ -736,10 +1051,6 @@ async function handleDiceBattle(
             battleId
         );
 
-    // ==========================================
-    // SAVAŞ BULUNAMADI
-    // ==========================================
-
     if (!battle) {
 
         return interaction.reply({
@@ -748,14 +1059,8 @@ async function handleDiceBattle(
                 '❌ Bu zar savaşı artık aktif değil veya süresi dolmuş.',
 
             ephemeral: true
-
         });
-
     }
-
-    // ==========================================
-    // SADECE RAKİP CEVAPLAYABİLİR
-    // ==========================================
 
     if (
         interaction.user.id !==
@@ -768,9 +1073,7 @@ async function handleDiceBattle(
                 '❌ Bu zar savaşı teklifine sadece davet edilen kişi cevap verebilir.',
 
             ephemeral: true
-
         });
-
     }
 
     // ==========================================
@@ -791,7 +1094,7 @@ async function handleDiceBattle(
             battle.opponentId
         );
 
-        await interaction.update({
+        return interaction.update({
 
             content:
                 '❌ Zar savaşı teklifi reddedildi.',
@@ -799,45 +1102,50 @@ async function handleDiceBattle(
             embeds: [],
 
             components: []
-
         });
-
-        return;
-
     }
 
     // ==========================================
-    // KABUL
+    // BAHİS
     // ==========================================
-
-    battle.accepted = true;
-
-    const data =
-        loadEconomy();
-
-    const challengerData =
-        getEconomyUser(
-            data,
-            battle.challengerId
-        );
-
-    const opponentData =
-        getEconomyUser(
-            data,
-            battle.opponentId
-        );
 
     const bet =
         Number(
             battle.bet
         );
 
+    if (
+        !Number.isFinite(bet) ||
+        bet <= 0
+    ) {
+
+        return interaction.update({
+
+            content:
+                '❌ Geçersiz bahis miktarı.',
+
+            embeds: [],
+
+            components: []
+        });
+    }
+
     // ==========================================
-    // İKİ TARAFIN DA PARASI VAR MI?
+    // BAKİYELER
     // ==========================================
 
+    const challengerBalance =
+        getUserBalance(
+            battle.challengerId
+        );
+
+    const opponentBalance =
+        getUserBalance(
+            battle.opponentId
+        );
+
     if (
-        challengerData.money < bet
+        challengerBalance < bet
     ) {
 
         activeBattles.delete(
@@ -860,13 +1168,11 @@ async function handleDiceBattle(
             embeds: [],
 
             components: []
-
         });
-
     }
 
     if (
-        opponentData.money < bet
+        opponentBalance < bet
     ) {
 
         activeBattles.delete(
@@ -889,25 +1195,43 @@ async function handleDiceBattle(
             embeds: [],
 
             components: []
-
         });
-
     }
 
     // ==========================================
-    // BAHİSLERİ DÜŞ
+    // BAHİSLERİ ÇEK
     // ==========================================
 
-    challengerData.money -= bet;
+    const challengerRemove =
+        removeUserMoney(
+            battle.challengerId,
+            bet
+        );
 
-    opponentData.money -= bet;
+    const opponentRemove =
+        removeUserMoney(
+            battle.opponentId,
+            bet
+        );
 
-    saveEconomy(
-        data
-    );
+    if (
+        !challengerRemove.success ||
+        !opponentRemove.success
+    ) {
+
+        return interaction.update({
+
+            content:
+                '❌ Zar savaşı sırasında Cash işlemi başarısız oldu.',
+
+            embeds: [],
+
+            components: []
+        });
+    }
 
     // ==========================================
-    // ZARLARI AT
+    // ZARLAR
     // ==========================================
 
     const challengerRoll =
@@ -924,14 +1248,7 @@ async function handleDiceBattle(
         bet * 2;
 
     let winnerId = null;
-
-    let loserId = null;
-
     let draw = false;
-
-    // ==========================================
-    // KAZANAN
-    // ==========================================
 
     if (
         challengerRoll >
@@ -941,9 +1258,6 @@ async function handleDiceBattle(
         winnerId =
             battle.challengerId;
 
-        loserId =
-            battle.opponentId;
-
     } else if (
         opponentRoll >
         challengerRoll
@@ -952,52 +1266,37 @@ async function handleDiceBattle(
         winnerId =
             battle.opponentId;
 
-        loserId =
-            battle.challengerId;
-
     } else {
 
         draw = true;
-
     }
 
     // ==========================================
-    // KAZANANIN PARASINI VER
+    // KAZANAN
     // ==========================================
 
     if (!draw) {
 
-        const winnerData =
-            getEconomyUser(
-                data,
-                winnerId
-            );
-
-        winnerData.money +=
-            totalPrize;
-
-        saveEconomy(
-            data
+        addUserMoney(
+            winnerId,
+            totalPrize
         );
 
     } else {
 
-        // Beraberlikte bahisler geri verilir
-
-        challengerData.money +=
-            bet;
-
-        opponentData.money +=
-            bet;
-
-        saveEconomy(
-            data
+        addUserMoney(
+            battle.challengerId,
+            bet
         );
 
+        addUserMoney(
+            battle.opponentId,
+            bet
+        );
     }
 
     // ==========================================
-    // SAVAŞI TEMİZLE
+    // BATTLE TEMİZLE
     // ==========================================
 
     activeBattles.delete(
@@ -1016,11 +1315,9 @@ async function handleDiceBattle(
     // SONUÇ
     // ==========================================
 
-    let resultTitle = '';
-
-    let resultDescription = '';
-
-    let resultColor = 0x5865F2;
+    let resultTitle;
+    let resultDescription;
+    let resultColor;
 
     if (draw) {
 
@@ -1037,9 +1334,7 @@ async function handleDiceBattle(
             '💰 Bahisler iki oyuncuya da geri ödendi.\n\n' +
 
             '💵 İade edilen bahis: `' +
-            bet.toLocaleString(
-                'tr-TR'
-            ) +
+            bet.toLocaleString('tr-TR') +
             ' Cash`';
 
     } else {
@@ -1059,16 +1354,9 @@ async function handleDiceBattle(
             '>\n\n' +
 
             '💰 **Kazanç:** `' +
-            totalPrize.toLocaleString(
-                'tr-TR'
-            ) +
+            totalPrize.toLocaleString('tr-TR') +
             ' Cash`';
-
     }
-
-    // ==========================================
-    // SONUÇ EMBED
-    // ==========================================
 
     const resultEmbed =
         new EmbedBuilder()
@@ -1099,7 +1387,6 @@ async function handleDiceBattle(
                         '`',
 
                     inline: true
-
                 },
 
                 {
@@ -1114,7 +1401,6 @@ async function handleDiceBattle(
                         '`',
 
                     inline: true
-
                 },
 
                 {
@@ -1123,15 +1409,11 @@ async function handleDiceBattle(
 
                     value:
                         '`' +
-                        bet.toLocaleString(
-                            'tr-TR'
-                        ) +
+                        bet.toLocaleString('tr-TR') +
                         ' Cash`',
 
                     inline: true
-
                 }
-
             )
 
             .setFooter({
@@ -1143,10 +1425,6 @@ async function handleDiceBattle(
 
             .setTimestamp();
 
-    // ==========================================
-    // MESAJI GÜNCELLE
-    // ==========================================
-
     await interaction.update({
 
         content:
@@ -1157,13 +1435,24 @@ async function handleDiceBattle(
         ],
 
         components: []
-
     });
-
 }
 
 // ==========================================
-// BOTU BAŞLAT
+// TOKEN
+// ==========================================
+
+if (!process.env.TOKEN) {
+
+    console.error(
+        '❌ TOKEN bulunamadı! .env dosyanı kontrol et.'
+    );
+
+    process.exit(1);
+}
+
+// ==========================================
+// LOGIN
 // ==========================================
 
 client.login(

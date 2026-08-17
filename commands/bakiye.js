@@ -3,60 +3,7 @@ const {
     EmbedBuilder
 } = require('discord.js');
 
-const fs = require('fs');
-const path = require('path');
-
-const dataPath = path.join(
-    __dirname,
-    '..',
-    'data',
-    'economy.json'
-);
-
-// ==========================================
-// VERİLERİ YÜKLE
-// ==========================================
-
-function loadData() {
-
-    if (!fs.existsSync(dataPath)) {
-
-        fs.mkdirSync(
-            path.dirname(dataPath),
-            {
-                recursive: true
-            }
-        );
-
-        fs.writeFileSync(
-            dataPath,
-            '{}'
-        );
-    }
-
-    try {
-
-        return JSON.parse(
-            fs.readFileSync(
-                dataPath,
-                'utf8'
-            )
-        );
-
-    } catch (error) {
-
-        console.error(
-            '❌ Economy verisi okunamadı:',
-            error
-        );
-
-        return {};
-    }
-}
-
-// ==========================================
-// KOMUT
-// ==========================================
+const economy = require('../utils/economy');
 
 module.exports = {
 
@@ -65,161 +12,69 @@ module.exports = {
         .setName('bakiye')
 
         .setDescription(
-            'Cash bakiyeni veya başka bir kullanıcının bakiyesini gösterir.'
+            'Cash bakiyeni gösterir.'
         )
 
-        // NORMAL OYUNCULAR KULLANABİLİR
-        .setDefaultMemberPermissions(null)
-
         .addUserOption(option =>
-
             option
                 .setName('kullanici')
-
                 .setDescription(
-                    'Bakiyesini görmek istediğin kişi.'
+                    'Bakiyesini görmek istediğin kullanıcı'
                 )
-
                 .setRequired(false)
-
         ),
-
-    // ==========================================
-    // ÇALIŞTIR
-    // ==========================================
 
     async execute(interaction) {
 
-        try {
+        const user =
+            interaction.options.getUser('kullanici') ||
+            interaction.user;
 
-            // ==========================================
-            // KULLANICI
-            // ==========================================
+        // SADECE economy.json oku
+        const data =
+            economy.loadEconomy();
 
-            const user =
-                interaction.options.getUser(
-                    'kullanici'
-                ) ||
-                interaction.user;
+        // Kullanıcı economy.json içinde yoksa 0
+        const userData =
+            data[user.id];
 
-            // ==========================================
-            // VERİLER
-            // ==========================================
+        const balance =
+            userData
+                ? Number(userData.money) || 0
+                : 0;
 
-            const data =
-                loadData();
+        const embed =
+            new EmbedBuilder()
 
-            // ==========================================
-            // BAKİYE
-            // ==========================================
+                .setColor(0x57F287)
 
-            let money = 0;
+                .setTitle(
+                    '💰 CASH BAKİYESİ'
+                )
 
-            if (data[user.id]) {
+                .setDescription(
 
-                money =
-                    Number(
-                        data[user.id].money
-                    ) || 0;
+                    `👤 **Kullanıcı:** ${user}\n\n` +
 
-            }
+                    `💵 **Bakiye:** \`${balance.toLocaleString('tr-TR')} Cash\``
 
-            // ==========================================
-            // EMBED
-            // ==========================================
+                )
 
-            const embed =
-                new EmbedBuilder()
-
-                    .setColor(
-                        0x57F287
-                    )
-
-                    .setTitle(
-                        '💰 CASH BAKİYESİ'
-                    )
-
-                    .setDescription(
-
-                        '👤 **Kullanıcı:** ' +
-                        user +
-                        '\n\n' +
-
-                        '💵 **Bakiye:**\n' +
-
-                        '`' +
-                        money.toLocaleString(
-                            'tr-TR'
-                        ) +
-                        ' Cash`'
-
-                    )
-
-                    .setThumbnail(
-
-                        user.displayAvatarURL({
-                            size: 256
-                        })
-
-                    )
-
-                    .setFooter({
-
-                        text:
-                            'CashBot • Ekonomi Sistemi'
-
+                .setThumbnail(
+                    user.displayAvatarURL({
+                        dynamic: true
                     })
+                )
 
-                    .setTimestamp();
+                .setFooter({
+                    text:
+                        'CashBot • Economy'
+                })
 
-            // ==========================================
-            // CEVAP
-            // ==========================================
+                .setTimestamp();
 
-            await interaction.reply({
-
-                embeds: [
-                    embed
-                ]
-
-            });
-
-        } catch (error) {
-
-            console.error(
-                '❌ BAKİYE KOMUTU HATASI:',
-                error
-            );
-
-            if (
-                interaction.replied ||
-                interaction.deferred
-            ) {
-
-                await interaction.followUp({
-
-                    content:
-                        '❌ Bakiye bilgisi alınırken bir hata oluştu.',
-
-                    ephemeral: true
-
-                });
-
-            } else {
-
-                await interaction.reply({
-
-                    content:
-                        '❌ Bakiye bilgisi alınırken bir hata oluştu.',
-
-                    ephemeral: true
-
-                });
-
-            }
-
-        }
-
+        return interaction.reply({
+            embeds: [embed]
+        });
     }
-
 };

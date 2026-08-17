@@ -4,57 +4,38 @@ const {
     EmbedBuilder
 } = require('discord.js');
 
-const fs = require('fs');
-const path = require('path');
-
-const dataPath = path.join(
-    __dirname,
-    '..',
-    'data',
-    'economy.json'
-);
-
-function loadData() {
-
-    if (!fs.existsSync(dataPath)) {
-        fs.writeFileSync(dataPath, '{}');
-    }
-
-    return JSON.parse(
-        fs.readFileSync(dataPath, 'utf8')
-    );
-}
-
-function saveData(data) {
-
-    fs.writeFileSync(
-        dataPath,
-        JSON.stringify(data, null, 4)
-    );
-}
+const economy = require('../utils/economy');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('givemoney')
+        .setName('para-ver')
         .setDescription('Bir kullanıcıya Cash verir.')
-        .setDefaultMemberPermissions(
-            PermissionFlagsBits.Administrator
-        )
         .addUserOption(option =>
             option
                 .setName('kullanici')
-                .setDescription('Cash verilecek kullanıcı.')
+                .setDescription('Cash verilecek kullanıcı')
                 .setRequired(true)
         )
         .addIntegerOption(option =>
             option
                 .setName('miktar')
-                .setDescription('Verilecek Cash miktarı.')
-                .setRequired(true)
+                .setDescription('Verilecek Cash miktarı')
                 .setMinValue(1)
+                .setRequired(true)
         ),
 
     async execute(interaction) {
+
+        if (
+            !interaction.member.permissions.has(
+                PermissionFlagsBits.Administrator
+            )
+        ) {
+            return interaction.reply({
+                content: '❌ Bu komutu sadece **Administrator** yetkisine sahip yetkililer kullanabilir.',
+                ephemeral: true
+            });
+        }
 
         const user =
             interaction.options.getUser('kullanici');
@@ -62,42 +43,27 @@ module.exports = {
         const amount =
             interaction.options.getInteger('miktar');
 
-        const data = loadData();
+        const newBalance =
+            economy.addMoney(
+                user.id,
+                amount
+            );
 
-        if (!data[user.id]) {
-            data[user.id] = {
-                money: 0,
-                xp: 0
-            };
-        }
+        const embed =
+            new EmbedBuilder()
+                .setColor(0x57F287)
+                .setTitle('💸 PARA VERİLDİ')
+                .setDescription(
+                    `👤 **Kullanıcı:** ${user}\n\n` +
+                    `💰 **Verilen:** \`${amount.toLocaleString('tr-TR')} Cash\`\n` +
+                    `💵 **Yeni bakiye:** \`${newBalance.toLocaleString('tr-TR')} Cash\``
+                )
+                .setFooter({
+                    text: `İşlemi yapan: ${interaction.user.tag}`
+                })
+                .setTimestamp();
 
-        data[user.id].money += amount;
-
-        saveData(data);
-
-        const embed = new EmbedBuilder()
-            .setColor(0x57F287)
-            .setTitle('💰 Cash Verildi')
-            .setDescription(
-                '👤 **Kullanıcı:** ' +
-                user +
-                '\n' +
-                '💵 **Verilen:** `' +
-                amount.toLocaleString('tr-TR') +
-                ' Cash`' +
-                '\n\n' +
-                '💰 **Yeni Bakiye:** `' +
-                data[user.id].money.toLocaleString('tr-TR') +
-                ' Cash`'
-            )
-            .setFooter({
-                text:
-                    'Yetkili: ' +
-                    interaction.user.tag
-            })
-            .setTimestamp();
-
-        await interaction.reply({
+        return interaction.reply({
             embeds: [embed]
         });
     }
