@@ -6,7 +6,7 @@ const {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('rolbilgi')
-        .setDescription('Bir rol hakkında detaylı bilgi verir.')
+        .setDescription('Bir role sahip kişileri gösterir.')
         .addRoleOption(option =>
             option
                 .setName('rol')
@@ -17,49 +17,49 @@ module.exports = {
     async execute(interaction) {
         const role = interaction.options.getRole('rol');
 
+        // Roldeki üyeleri al
+        const members = role.members;
+
+        // Üye sayısı
+        const memberCount = members.size;
+
+        // Üyeleri listele
+        let memberList;
+
+        if (memberCount === 0) {
+            memberList = 'Bu role sahip hiç kimse yok.';
+        } else {
+            memberList = members
+                .map(member => `• ${member}`)
+                .join('\n');
+        }
+
+        // Discord embed açıklama sınırını aşmasını önle
+        if (memberList.length > 4000) {
+            memberList =
+                members
+                    .map(member => `• ${member}`)
+                    .join('\n')
+                    .substring(0, 3900) +
+                '\n\n... ve diğer üyeler.';
+        }
+
         const embed = new EmbedBuilder()
             .setColor(role.color || 0x5865F2)
-            .setTitle('🎭 Rol Bilgisi')
-            .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
+            .setTitle(`🎭 ${role.name} Rol Bilgisi`)
+            .setDescription(
+                `👥 **Bu role sahip kişi sayısı:** \`${memberCount}\`\n\n` +
+                `**👤 Role Sahip Üyeler:**\n${memberList}`
+            )
             .addFields(
-                {
-                    name: '📌 Rol Adı',
-                    value: `${role.name}`,
-                    inline: true
-                },
                 {
                     name: '🆔 Rol ID',
                     value: `\`${role.id}\``,
                     inline: true
                 },
                 {
-                    name: '👥 Üye Sayısı',
-                    value: `${role.members.size}`,
-                    inline: true
-                },
-                {
                     name: '🎨 Rol Rengi',
                     value: role.hexColor,
-                    inline: true
-                },
-                {
-                    name: '📅 Oluşturulma',
-                    value: `<t:${Math.floor(role.createdTimestamp / 1000)}:F>`,
-                    inline: true
-                },
-                {
-                    name: '📢 Mention',
-                    value: `${role}`,
-                    inline: true
-                },
-                {
-                    name: '⚙️ Yönetilebilir mi?',
-                    value: role.managed ? '❌ Hayır' : '✅ Evet',
-                    inline: true
-                },
-                {
-                    name: '📍 Pozisyon',
-                    value: `${role.position}`,
                     inline: true
                 }
             )
