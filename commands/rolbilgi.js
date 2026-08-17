@@ -15,61 +15,56 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        await interaction.deferReply();
-
         const role = interaction.options.getRole('rol');
 
-        try {
-            // Sunucudaki tüm üyeleri çek
-            const members = await interaction.guild.members.fetch();
+        // Discord'un "düşünüyor..." süresini hemen başlat
+        await interaction.deferReply();
 
-            // Seçilen role sahip üyeleri bul
+        try {
+            // Üyeleri Discord'dan al
+            const members = await interaction.guild.members.fetch({
+                withPresences: false
+            });
+
+            // Role sahip üyeleri bul
             const roleMembers = members.filter(member =>
                 member.roles.cache.has(role.id)
             );
 
             const memberCount = roleMembers.size;
 
-            let memberList;
+            // Üyeleri sırala
+            const sortedMembers = [...roleMembers.values()]
+                .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+            // Listeyi oluştur
+            let memberList = sortedMembers
+                .map((member, index) => `${index + 1}. ${member}`)
+                .join('\n');
 
             if (memberCount === 0) {
-                memberList = '❌ Bu role sahip hiç kimse bulunamadı.';
-            } else {
-                memberList = roleMembers
-                    .map(member => `• ${member}`)
-                    .join('\n');
+                memberList = '❌ Bu role sahip kimse bulunamadı.';
             }
 
             // Discord embed açıklama limiti
             if (memberList.length > 3800) {
-                const visibleMembers = roleMembers
-                    .map(member => `• ${member}`)
-                    .join('\n');
-
                 memberList =
-                    visibleMembers.substring(0, 3700) +
-                    `\n\n... ve daha fazla üye var. **Toplam: ${memberCount} kişi**`;
+                    memberList.substring(0, 3600) +
+                    `\n\n... **${memberCount} kişi** bulundu. Liste çok uzun olduğu için tamamı gösterilemedi.`;
             }
 
             const embed = new EmbedBuilder()
                 .setColor(role.color || 0x5865F2)
-                .setTitle(`🎭 ${role.name} Rol Bilgisi`)
+                .setTitle(`🎭 ${role.name}`)
                 .setDescription(
-                    `👥 **Role sahip kişi sayısı:** \`${memberCount}\`\n\n` +
+                    `👥 **Toplam:** \`${memberCount} kişi\`\n\n` +
                     `👤 **Role Sahip Üyeler:**\n${memberList}`
                 )
-                .addFields(
-                    {
-                        name: '🆔 Rol ID',
-                        value: `\`${role.id}\``,
-                        inline: true
-                    },
-                    {
-                        name: '🎨 Rol Rengi',
-                        value: role.hexColor,
-                        inline: true
-                    }
-                )
+                .addFields({
+                    name: '🆔 Rol ID',
+                    value: `\`${role.id}\``,
+                    inline: true
+                })
                 .setFooter({
                     text: `CashBot • ${interaction.guild.name}`
                 })
@@ -80,10 +75,11 @@ module.exports = {
             });
 
         } catch (error) {
-            console.error('Rol bilgisi hatası:', error);
+            console.error('ROL BİLGİ HATASI:', error);
 
             await interaction.editReply({
-                content: '❌ Üyeler alınırken bir hata oluştu. Botun **Server Members Intent** yetkisinin açık olduğundan emin ol.'
+                content:
+                    '❌ Üyeler alınırken hata oluştu. Discord Developer Portal üzerinden **Server Members Intent** özelliğinin açık olduğundan emin ol.'
             });
         }
     }
