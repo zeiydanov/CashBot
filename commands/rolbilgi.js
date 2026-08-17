@@ -17,19 +17,25 @@ module.exports = {
 
     async execute(interaction) {
 
+        console.log('==============================');
+        console.log('🎭 /rolbilgi çalıştı!');
+        console.log(`👤 Kullanıcı: ${interaction.user.tag}`);
+        console.log(`🏠 Sunucu: ${interaction.guild.name}`);
+
         const role = interaction.options.getRole('rol');
 
-        // Cevabı hemen başlat
-        await interaction.deferReply();
+        console.log(`🎯 Rol: ${role.name}`);
+        console.log(`🆔 Rol ID: ${role.id}`);
+        console.log(`👥 Cache üye sayısı: ${role.members.size}`);
+
+        await interaction.reply({
+            content: '⏳ Rol bilgileri hazırlanıyor...'
+        });
 
         try {
 
-            // Cache'deki üyelerden role sahip olanları bul
             const roleMembers = role.members;
 
-            const memberCount = roleMembers.size;
-
-            // Üyeleri isme göre sırala
             const sortedMembers = [...roleMembers.values()]
                 .sort((a, b) =>
                     a.displayName.localeCompare(
@@ -37,6 +43,10 @@ module.exports = {
                         'tr'
                     )
                 );
+
+            const memberCount = sortedMembers.length;
+
+            console.log(`✅ Role sahip üye sayısı: ${memberCount}`);
 
             let memberList;
 
@@ -56,8 +66,8 @@ module.exports = {
 
             }
 
-            // Discord embed açıklaması maksimum 4096 karakter
-            if (memberList.length > 3600) {
+            // Discord açıklama limiti
+            if (memberList.length > 3500) {
 
                 const visibleMembers = [];
 
@@ -69,9 +79,8 @@ module.exports = {
                         `${i + 1}. ${sortedMembers[i]}\n`;
 
                     if (
-                        currentLength +
-                        line.length >
-                        3500
+                        currentLength + line.length >
+                        3400
                     ) {
                         break;
                     }
@@ -81,9 +90,14 @@ module.exports = {
                     currentLength += line.length;
                 }
 
+                const remaining =
+                    memberCount -
+                    visibleMembers.length;
+
                 memberList =
                     visibleMembers.join('') +
-                    `\n... ve **${memberCount - visibleMembers.length} kişi daha** var.`;
+                    `\n... ve **${remaining} kişi daha** var.`;
+
             }
 
             const embed =
@@ -94,15 +108,12 @@ module.exports = {
                     )
 
                     .setTitle(
-                        `🎭 ${role.name} Rol Bilgisi`
+                        `🎭 ${role.name}`
                     )
 
                     .setDescription(
-                        `👥 **Toplam Üye:** \`${memberCount}\` kişi\n\n` +
-
-                        `👤 **Role Sahip Üyeler:**\n` +
-
-                        memberList
+                        `👥 **Toplam:** \`${memberCount}\` kişi\n\n` +
+                        `👤 **Role Sahip Üyeler:**\n${memberList}`
                     )
 
                     .addFields({
@@ -138,26 +149,32 @@ module.exports = {
 
             await interaction.editReply({
 
+                content: null,
+
                 embeds: [
                     embed
                 ]
 
             });
 
+            console.log('✅ /rolbilgi başarıyla tamamlandı.');
+            console.log('==============================');
+
         } catch (error) {
 
             console.error(
-                '❌ Rol bilgi hatası:',
+                '❌ /rolbilgi HATASI:',
                 error
             );
 
             await interaction.editReply({
 
                 content:
-                    '❌ Rol bilgileri alınırken bir hata oluştu.'
+                    '❌ Rol bilgileri alınırken hata oluştu.',
+
+                embeds: []
 
             });
-
         }
     }
 };
