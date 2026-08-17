@@ -6,7 +6,7 @@ const {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('duyuru')
-        .setDescription('Duyuru kanalına @everyone ile duyuru gönderir.')
+        .setDescription('Bulunduğun sunucunun duyuru kanalına @everyone ile duyuru gönderir.')
         .addStringOption(option =>
             option
                 .setName('mesaj')
@@ -19,16 +19,68 @@ module.exports = {
 
     async execute(interaction) {
 
-        const message = interaction.options.getString('mesaj');
+        // ==========================================
+        // SUNUCU KONTROL
+        // ==========================================
 
-        const channelId = process.env.ANNOUNCEMENT_CHANNEL_ID;
-
-        if (!channelId) {
+        if (!interaction.guild) {
             return interaction.reply({
-                content: '❌ ANNOUNCEMENT_CHANNEL_ID .env dosyasında bulunamadı.',
+                content: '❌ Bu komut sadece sunucularda kullanılabilir.',
                 ephemeral: true
             });
         }
+
+        const guildId = interaction.guild.id;
+
+        // ==========================================
+        // SUNUCUYA GÖRE DUYURU KANALI
+        // ==========================================
+
+        let channelId = null;
+
+        // 1. SUNUCU
+        if (guildId === process.env.GUILD_ID) {
+
+            channelId =
+                process.env.ANNOUNCEMENT_CHANNEL_ID;
+
+        }
+
+        // 2. SUNUCU
+        else if (guildId === process.env.GUILD_ID_2) {
+
+            channelId =
+                process.env.ANNOUNCEMENT_CHANNEL_ID_2;
+
+        }
+
+        // TANIMSIZ SUNUCU
+        else {
+
+            return interaction.reply({
+                content:
+                    '❌ Bu sunucu CashBot tarafından yapılandırılmamış.',
+                ephemeral: true
+            });
+        }
+
+        // ==========================================
+        // CHANNEL ID KONTROL
+        // ==========================================
+
+        if (!channelId) {
+
+            return interaction.reply({
+                content:
+                    '❌ Bu sunucu için duyuru kanalı yapılandırılmamış.\n\n' +
+                    '🔧 `.env` dosyasındaki duyuru kanal ID\'sini kontrol et.',
+                ephemeral: true
+            });
+        }
+
+        // ==========================================
+        // KANALI BUL
+        // ==========================================
 
         const announcementChannel =
             await interaction.client.channels
@@ -36,33 +88,90 @@ module.exports = {
                 .catch(() => null);
 
         if (!announcementChannel) {
+
             return interaction.reply({
-                content: '❌ Duyuru kanalı bulunamadı.',
+                content:
+                    '❌ Bu sunucunun duyuru kanalı bulunamadı.\n\n' +
+                    `🆔 Kanal ID: \`${channelId}\``,
                 ephemeral: true
             });
         }
 
+        // ==========================================
+        // KANALIN AYNI SUNUCUDA OLDUĞUNU KONTROL ET
+        // ==========================================
+
+        if (
+            announcementChannel.guildId !== guildId
+        ) {
+
+            console.error(
+                '❌ DUYURU KANALI SUNUCU UYUŞMAZLIĞI'
+            );
+
+            console.error(
+                `Komut Sunucusu: ${guildId}`
+            );
+
+            console.error(
+                `Kanal Sunucusu: ${announcementChannel.guildId}`
+            );
+
+            return interaction.reply({
+                content:
+                    '❌ Duyuru kanalı başka bir sunucuya ait görünüyor. `.env` ayarlarını kontrol et.',
+                ephemeral: true
+            });
+        }
+
+        // ==========================================
+        // MESAJ
+        // ==========================================
+
+        const message =
+            interaction.options.getString('mesaj');
+
+        // ==========================================
+        // DUYURU GÖNDER
+        // ==========================================
+
         try {
 
             await announcementChannel.send({
-                content: `@everyone\n\n📢 **DUYURU**\n\n${message}`,
+
+                content:
+                    `@everyone\n\n` +
+                    `📢 **DUYURU**\n\n` +
+                    `${message}`,
+
                 allowedMentions: {
                     parse: ['everyone']
                 }
+
             });
 
-            await interaction.reply({
-                content: '✅ Duyuru başarıyla gönderildi.',
+            console.log(
+                `📢 Duyuru gönderildi | ${interaction.guild.name} | ${announcementChannel.name}`
+            );
+
+            return interaction.reply({
+                content:
+                    `✅ Duyuru başarıyla gönderildi.\n\n` +
+                    `📢 **Kanal:** ${announcementChannel}`,
                 ephemeral: true
             });
 
         } catch (error) {
 
-            console.error('❌ Duyuru gönderme hatası:', error);
+            console.error(
+                '❌ Duyuru gönderme hatası:',
+                error
+            );
 
-            await interaction.reply({
+            return interaction.reply({
                 content:
-                    '❌ Duyuru gönderilemedi. Botun kanalda mesaj gönderme ve @everyone etiketleme yetkisini kontrol et.',
+                    '❌ Duyuru gönderilemedi.\n\n' +
+                    'Botun bu kanalda **Mesaj Gönder** ve **@everyone Etiketle** yetkilerini kontrol et.',
                 ephemeral: true
             });
         }
