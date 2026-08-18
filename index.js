@@ -43,6 +43,223 @@ const client = new Client({
 
 client.commands = new Collection();
 
+// ==========================================
+// 1. SUNUCU CASHBOT ERİŞİM SİSTEMİ
+// ==========================================
+
+// SADECE 1. SUNUCUDA GEÇERLİDİR.
+//
+// Bu ID bir Discord ROL ID'sidir.
+//
+// 2. SUNUCUDA BU SİSTEM DEVRE DIŞIDIR.
+
+const FIRST_GUILD_ACCESS_ROLE_ID =
+    '1516432684396843139';
+
+// ==========================================
+// 1. SUNUCU KONTROL
+// ==========================================
+
+function isFirstGuild(guildId) {
+
+    return (
+        guildId &&
+        guildId === process.env.GUILD_ID
+    );
+}
+
+// ==========================================
+// MODERASYON KOMUTU TESPİTİ
+// ==========================================
+//
+// Moderasyon command dosyalarında:
+//
+// moderation: true
+//
+// veya:
+//
+// isModeration: true
+//
+// veya:
+//
+// category: 'moderation'
+//
+// kullanabilirsin.
+//
+// 2. sunucuyu etkilemez.
+// ==========================================
+
+function isModerationCommand(command) {
+
+    if (!command) {
+        return false;
+    }
+
+    // --------------------------------------
+    // moderation: true
+    // --------------------------------------
+
+    if (
+        command.moderation === true
+    ) {
+
+        return true;
+    }
+
+    // --------------------------------------
+    // isModeration: true
+    // --------------------------------------
+
+    if (
+        command.isModeration === true
+    ) {
+
+        return true;
+    }
+
+    // --------------------------------------
+    // category: moderation
+    // --------------------------------------
+
+    if (
+        typeof command.category === 'string' &&
+        command.category.toLowerCase() === 'moderation'
+    ) {
+
+        return true;
+    }
+
+    // --------------------------------------
+    // data.category: moderation
+    // --------------------------------------
+
+    if (
+        typeof command.data?.category === 'string' &&
+        command.data.category.toLowerCase() === 'moderation'
+    ) {
+
+        return true;
+    }
+
+    return false;
+}
+
+// ==========================================
+// CASHBOT ACCESS CONTROL
+// ==========================================
+
+function checkCashBotAccess(
+    interaction,
+    command
+) {
+
+    // ======================================
+    // 2. SUNUCU VE DİĞER SUNUCULAR
+    // ======================================
+    //
+    // BURADA HİÇBİR DEĞİŞİKLİK YAPILMIYOR.
+    //
+    // Mevcut Homie sistemi aynen devam eder.
+
+    if (
+        !isFirstGuild(
+            interaction.guild?.id
+        )
+    ) {
+
+        return {
+            allowed: true
+        };
+    }
+
+    // ======================================
+    // DM KONTROLÜ
+    // ======================================
+
+    if (
+        !interaction.guild
+    ) {
+
+        return {
+            allowed: false,
+
+            reason:
+                '❌ Bu komut sadece sunucuda kullanılabilir.'
+        };
+    }
+
+    // ======================================
+    // MEMBER KONTROLÜ
+    // ======================================
+
+    const member =
+        interaction.member;
+
+    if (!member) {
+
+        return {
+            allowed: false,
+
+            reason:
+                '❌ Sunucu üye bilgisi alınamadı.'
+        };
+    }
+
+    // ======================================
+    // 1. SUNUCUDA MODERASYON
+    // ======================================
+    //
+    // Moderasyon komutları 1. sunucuda
+    // CashBot kullanıcılarına kapalıdır.
+
+    if (
+        isModerationCommand(
+            command
+        )
+    ) {
+
+        return {
+            allowed: false,
+
+            reason:
+                '❌ Bu sunucuda CashBot moderasyon komutlarına erişimin yok.'
+        };
+    }
+
+    // ======================================
+    // CASHBOT ERİŞİM ROLÜ
+    // ======================================
+
+    const hasCashBotRole =
+        member.roles.cache.has(
+            FIRST_GUILD_ACCESS_ROLE_ID
+        );
+
+    if (
+        !hasCashBotRole
+    ) {
+
+        return {
+            allowed: false,
+
+            reason:
+                '❌ CashBot kullanmak için gerekli role sahip değilsin.'
+        };
+    }
+
+    // ======================================
+    // ERİŞİM VAR
+    // ======================================
+
+    return {
+        allowed: true
+    };
+}
+
+// ==========================================
+// LOAD COMMANDS
+// ==========================================
+
 const commandsPath = path.join(
     __dirname,
     'commands'
@@ -80,8 +297,13 @@ if (fs.existsSync(commandsPath)) {
                     command
                 );
 
+                const moderation =
+                    isModerationCommand(
+                        command
+                    );
+
                 console.log(
-                    `✅ Komut yüklendi: /${command.data.name}`
+                    `${moderation ? '🛡️' : '✅'} Komut yüklendi: /${command.data.name}`
                 );
 
             } else {
@@ -353,6 +575,7 @@ client.once(
     () => {
 
         console.log('');
+
         console.log(
             '=========================================='
         );
@@ -401,6 +624,10 @@ client.once(
             '🔐 Kayıt Double-Create Protection: AKTİF'
         );
 
+        console.log(
+            `🔐 1. Sunucu CashBot Rolü: ${FIRST_GUILD_ACCESS_ROLE_ID}`
+        );
+
         console.log('');
 
         console.log(
@@ -418,6 +645,7 @@ client.once(
                 );
 
             console.log('');
+
             console.log(
                 `🏠 ${guild.name}`
             );
@@ -462,9 +690,35 @@ client.once(
             console.log(
                 `🌿 Weed Rolü: ${config.weedRoleId || 'YOK'}`
             );
+
+            if (
+                isFirstGuild(
+                    guild.id
+                )
+            ) {
+
+                console.log(
+                    `🔐 CashBot Kullanıcı Rolü: ${FIRST_GUILD_ACCESS_ROLE_ID}`
+                );
+
+                console.log(
+                    '🛡️ Moderasyon komutları: KAPALI'
+                );
+            }
+
+            if (
+                guild.id ===
+                process.env.GUILD_ID_2
+            ) {
+
+                console.log(
+                    '🔓 2. Sunucu erişim sistemi: MEVCUT SİSTEM'
+                );
+            }
         }
 
         console.log('');
+
         console.log(
             '=========================================='
         );
@@ -617,6 +871,43 @@ client.on(
 
                 return;
             }
+
+            // ======================================
+            // CASHBOT ACCESS CONTROL
+            // ======================================
+            //
+            // SADECE 1. SUNUCUDA AKTİF.
+            //
+            // 2. SUNUCUDA:
+            // allowed = true
+            //
+            // Böylece mevcut Homie sistemi
+            // değiştirilmez.
+
+            const access =
+                checkCashBotAccess(
+                    interaction,
+                    command
+                );
+
+            if (
+                !access.allowed
+            ) {
+
+                return interaction.reply({
+
+                    content:
+                        access.reason ||
+                        '❌ Bu komutu kullanma yetkin yok.',
+
+                    ephemeral: true
+
+                });
+            }
+
+            // ======================================
+            // COMMAND EXECUTE
+            // ======================================
 
             await command.execute(
                 interaction
@@ -1284,6 +1575,7 @@ function findUserTicket(
                 channel.type !==
                 ChannelType.GuildText
             ) {
+
                 return false;
             }
 
@@ -1291,6 +1583,7 @@ function findUserTicket(
                 channel.topic ===
                 `ticket-${userId}`
             ) {
+
                 return true;
             }
 
@@ -1311,6 +1604,7 @@ function findUserTicket(
                         PermissionFlagsBits.ViewChannel
                     )
                 ) {
+
                     return true;
                 }
             }
@@ -1771,7 +2065,6 @@ async function handleTicketButton(
                     `Merhaba ${interaction.user}!\n\n` +
 
                     'Talebiniz başarıyla oluşturuldu.\n' +
-
                     'Yetkililer en kısa sürede sizinle ilgilenecektir.\n\n' +
 
                     `📂 **Kategori:** ${ticketName}\n\n` +
@@ -2135,6 +2428,7 @@ function findUserKayit(
                 channel.type !==
                 ChannelType.GuildText
             ) {
+
                 return false;
             }
 
@@ -2142,6 +2436,7 @@ function findUserKayit(
                 channel.topic ===
                 `kayit-${userId}`
             ) {
+
                 return true;
             }
 
@@ -2162,6 +2457,7 @@ function findUserKayit(
                         PermissionFlagsBits.ViewChannel
                     )
                 ) {
+
                     return true;
                 }
             }
@@ -2238,10 +2534,6 @@ async function handleKayitModal(
     );
 
     try {
-
-        // ======================================
-        // CONFIG
-        // ======================================
 
         if (
             !validId(
@@ -2355,10 +2647,6 @@ async function handleKayitModal(
             });
         }
 
-        // ======================================
-        // EXISTING
-        // ======================================
-
         const existing =
             findUserKayit(
                 guild,
@@ -2376,10 +2664,6 @@ async function handleKayitModal(
 
             });
         }
-
-        // ======================================
-        // FORM BİLGİLERİ
-        // ======================================
 
         const isim =
             interaction.fields.getTextInputValue(
@@ -2406,10 +2690,6 @@ async function handleKayitModal(
                 'rp_deneyimi'
             );
 
-        // ======================================
-        // CHANNEL NAME
-        // ======================================
-
         let username =
             interaction.user.username
                 .toLowerCase()
@@ -2434,10 +2714,6 @@ async function handleKayitModal(
         const channelName =
             `kayit-${username}`;
 
-        // ======================================
-        // CREATE
-        // ======================================
-
         let channel;
 
         try {
@@ -2459,7 +2735,6 @@ async function handleKayitModal(
 
                     permissionOverwrites: [
 
-                        // EVERYONE
                         {
                             id:
                                 guild.id,
@@ -2471,7 +2746,6 @@ async function handleKayitModal(
                             ]
                         },
 
-                        // USER
                         {
                             id:
                                 userId,
@@ -2491,7 +2765,6 @@ async function handleKayitModal(
                             ]
                         },
 
-                        // STAFF
                         {
                             id:
                                 staffRole.id,
@@ -2513,7 +2786,6 @@ async function handleKayitModal(
                             ]
                         },
 
-                        // BOT
                         {
                             id:
                                 botMember.id,
@@ -2591,10 +2863,6 @@ async function handleKayitModal(
             });
         }
 
-        // ======================================
-        // KAYIT EMBED
-        // ======================================
-
         const kayitEmbed =
             new EmbedBuilder()
 
@@ -2661,10 +2929,6 @@ async function handleKayitModal(
                         )
                 );
 
-        // ======================================
-        // SEND
-        // ======================================
-
         try {
 
             await channel.send({
@@ -2702,10 +2966,6 @@ async function handleKayitModal(
 
             });
         }
-
-        // ======================================
-        // LOG
-        // ======================================
 
         if (
             validId(
@@ -2769,10 +3029,6 @@ async function handleKayitModal(
                     });
             }
         }
-
-        // ======================================
-        // SUCCESS
-        // ======================================
 
         return interaction.reply({
 
